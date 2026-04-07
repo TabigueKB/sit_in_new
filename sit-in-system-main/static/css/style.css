@@ -117,3 +117,32 @@ a:hover {
     }
 
 }
+/* Redesigned Sit-in Records Modal */
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.records-filter-btn {
+    height: 32px; padding: 0 14px; border: 0.5px solid #ccc;
+    border-radius: 8px; font-size: 12px; background: #f8f5ff;
+    color: #888; cursor: pointer; white-space: nowrap;
+    transition: all .15s;
+}
+.records-filter-btn.active-filter {
+    background: #5e3a8c; color: white; border-color: #5e3a8c;
+}
+
+.records-filter-btn {
+    height: 32px !important;
+    padding: 0 14px !important;
+    border: 1px solid #e0d8f0 !important;
+    border-radius: 8px !important;
+    font-size: 12px !important;
+    background: #f8f5ff !important;
+    color: #888 !important;
+    cursor: pointer !important;
+    white-space: nowrap !important;
+    transition: all .15s !important;
+}
+.records-filter-btn.active-filter {
+    background: #5e3a8c !important;
+    color: white !important;
+    border-color: #5e3a8c !important;
+}

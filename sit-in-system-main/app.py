@@ -5,6 +5,16 @@ import base64
 import uuid
 from datetime import datetime
 from werkzeug.utils import secure_filename
+import io
+import csv
+from flask import make_response
+from reportlab.lib.pagesizes import landscape, A4
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import cm
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, HRFlowable
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+
 
 app = Flask(__name__)
 app.secret_key = "secretkey"
@@ -83,7 +93,38 @@ def init_db():
     )
     """)
 
-    rooms = [('524', 30), ('526', 30), ('528', 30)]
+    # ── NEW: Reservations table ──
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS reservations(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        student_id TEXT,
+        name TEXT,
+        purpose TEXT,
+        lab TEXT,
+        date TEXT,
+        time_slot TEXT,
+        status TEXT DEFAULT 'PENDING',
+        admin_note TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    # ── NEW: Feedback table ──
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS feedback(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sitin_id INTEGER UNIQUE,
+        student_id TEXT,
+        name TEXT,
+        lab TEXT,
+        purpose TEXT,
+        rating INTEGER,
+        feedback_text TEXT,
+        submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    rooms = [('524', 30), ('525', 30), ('526', 30), ('527', 30), ('528', 30), ('529', 30), ('530', 30), ('530A', 30), ('530B', 30), ('530C', 30)]
     for r in rooms:
         conn.execute("INSERT OR IGNORE INTO rooms (room_number, capacity) VALUES (?, ?)", r)
 
@@ -99,6 +140,7 @@ def init_db():
         "ALTER TABLE users ADD COLUMN remaining_session INTEGER DEFAULT 30",
         "ALTER TABLE sitin_records ADD COLUMN session INTEGER DEFAULT 30",
         "ALTER TABLE users ADD COLUMN profile_pic TEXT",
+        "ALTER TABLE reservations ADD COLUMN admin_note TEXT",
     ]
     for sql in migrations:
         try:
@@ -115,12 +157,6 @@ init_db()
 # HELPER: Save profile picture
 # =========================
 def save_profile_pic(file=None, base64_data=None, old_pic=None):
-    """
-    Saves a profile pic from an uploaded file or base64 string.
-    Deletes the old pic if it exists.
-    Returns the filename (relative to static/uploads/).
-    """
-    # Delete old picture if it exists
     if old_pic:
         old_path = os.path.join(UPLOAD_FOLDER, old_pic)
         if os.path.exists(old_path):
@@ -137,7 +173,6 @@ def save_profile_pic(file=None, base64_data=None, old_pic=None):
         file.save(os.path.join(UPLOAD_FOLDER, filename))
 
     elif base64_data and base64_data.startswith("data:image"):
-        # Strip the data URL prefix: data:image/jpeg;base64,<data>
         try:
             header, encoded = base64_data.split(",", 1)
             ext = header.split("/")[1].split(";")[0]
@@ -191,7 +226,6 @@ def get_admin_data(search=None):
 
     rooms = conn.execute("SELECT * FROM rooms ORDER BY room_number").fetchall()
 
-    # Real counts per purpose for bar chart
     purpose_rows = conn.execute("""
         SELECT purpose, COUNT(*) as count
         FROM sitin_records
@@ -200,6 +234,27 @@ def get_admin_data(search=None):
     purpose_map = {row["purpose"]: row["count"] for row in purpose_rows}
     purposes = ["C Programming", "Java", "C#", "PHP"]
     purpose_counts = [purpose_map.get(p, 0) for p in purposes]
+
+    # ── Reservations ──
+    reservations = conn.execute("""
+        SELECT * FROM reservations ORDER BY created_at DESC
+    """).fetchall()
+
+    pending_reservations_count = conn.execute(
+        "SELECT COUNT(*) FROM reservations WHERE status='PENDING'"
+    ).fetchone()[0]
+
+    # ── Feedback reports ──
+    feedback_reports = conn.execute("""
+        SELECT f.*, s.time_in, s.time_out
+        FROM feedback f
+        LEFT JOIN sitin_records s ON s.id = f.sitin_id
+        ORDER BY f.submitted_at DESC
+    """).fetchall()
+
+    avg_rating = conn.execute(
+        "SELECT ROUND(AVG(rating), 2) FROM feedback"
+    ).fetchone()[0] or 0
 
     conn.close()
 
@@ -213,7 +268,11 @@ def get_admin_data(search=None):
         rooms=rooms,
         purposes=purposes,
         purpose_counts=purpose_counts,
-        search=search or ""
+        search=search or "",
+        reservations=reservations,
+        pending_reservations_count=pending_reservations_count,
+        feedback_reports=feedback_reports,
+        avg_rating=avg_rating,
     )
 
 # =========================
@@ -286,6 +345,31 @@ def dashboard():
     ).fetchone()
     remaining_session = student_data["remaining_session"] if student_data else 30
 
+    # ── Student's own reservations ──
+    my_reservations = conn.execute("""
+        SELECT * FROM reservations
+        WHERE student_id=?
+        ORDER BY created_at DESC
+    """, (user["student_id"],)).fetchall()
+
+    # Check if student already has a pending reservation
+    pending_reservation = conn.execute("""
+        SELECT * FROM reservations
+        WHERE student_id=? AND status='PENDING'
+        LIMIT 1
+    """, (user["student_id"],)).fetchone()
+
+    # ── Recent sit-in sessions with has_feedback flag ──
+    recent_rows = conn.execute("""
+        SELECT s.*,
+               CASE WHEN f.id IS NOT NULL THEN 1 ELSE 0 END AS has_feedback
+        FROM sitin_records s
+        LEFT JOIN feedback f ON f.sitin_id = s.id
+        WHERE s.student_id=?
+        ORDER BY s.time_in DESC
+        LIMIT 20
+    """, (user["student_id"],)).fetchall()
+
     conn.close()
 
     return render_template("dashboard.html",
@@ -293,10 +377,13 @@ def dashboard():
                            active_sitin=active_sitin,
                            labs=labs,
                            announcements=announcements,
-                           remaining_session=remaining_session)
+                           remaining_session=remaining_session,
+                           my_reservations=my_reservations,
+                           pending_reservation=pending_reservation,
+                           recent_sessions=recent_rows)
 
 # =========================
-# SEARCH STUDENT — no separate template needed
+# SEARCH STUDENT
 # =========================
 @app.route("/search_student")
 def search_student():
@@ -309,7 +396,6 @@ def search_student():
     conn.close()
 
     data = get_admin_data(search=search)
-    # open students modal automatically via flag
     return render_template("admin_dashboard.html", user=user, open_search=True, **data)
 
 # =========================
@@ -334,7 +420,7 @@ def get_student_info():
     return jsonify({"success": False})
 
 # =========================
-# SIT-IN
+# SIT-IN (admin)
 # =========================
 @app.route("/sitin", methods=["POST"])
 def sitin():
@@ -369,7 +455,7 @@ def sitin():
     return redirect("/dashboard")
 
 # =========================
-# TIME OUT
+# TIME OUT (admin)
 # =========================
 @app.route("/timeout/<int:id>", methods=["POST"])
 def timeout(id):
@@ -403,7 +489,6 @@ def register_user():
         request.form["password"]
     )
 
-    # Redirect back to dashboard if admin, otherwise to register/login page
     is_admin = session.get("is_admin", False)
     redirect_on_error   = "/dashboard" if is_admin else "/register"
     redirect_on_success = "/dashboard" if is_admin else "/"
@@ -504,7 +589,6 @@ def student_sitin():
     conn = get_db()
     user = conn.execute("SELECT * FROM users WHERE id=?", (session["user_id"],)).fetchone()
 
-    # Block if already sitting in
     existing = conn.execute("""
         SELECT * FROM sitin_records WHERE student_id=? AND status='IN'
     """, (user["student_id"],)).fetchone()
@@ -513,7 +597,6 @@ def student_sitin():
         conn.close()
         return redirect("/dashboard")
 
-    # Block if no sessions left
     if user["remaining_session"] <= 0:
         conn.close()
         return redirect("/dashboard")
@@ -527,7 +610,6 @@ def student_sitin():
         VALUES (?, ?, ?, ?, ?)
     """, (user["student_id"], name, purpose, lab, user["remaining_session"]))
 
-    # Deduct one session
     conn.execute("""
         UPDATE users SET remaining_session = remaining_session - 1 WHERE id=?
     """, (session["user_id"],))
@@ -555,7 +637,7 @@ def student_timeout(id):
     return redirect("/dashboard")
 
 # =========================
-# UPDATE PROFILE  (now handles profile picture)
+# UPDATE PROFILE
 # =========================
 @app.route("/update_profile", methods=["POST"])
 def update_profile():
@@ -574,10 +656,9 @@ def update_profile():
     user = conn.execute("SELECT * FROM users WHERE id=?", (session["user_id"],)).fetchone()
     old_pic = user["profile_pic"] if user else None
 
-    new_pic = old_pic  # default: keep existing
+    new_pic = old_pic
 
     if remove_pic:
-        # Delete old file and clear DB field
         if old_pic:
             old_path = os.path.join(UPLOAD_FOLDER, old_pic)
             if os.path.exists(old_path):
@@ -588,11 +669,9 @@ def update_profile():
         new_pic = None
 
     elif captured_data:
-        # Photo was taken via camera (base64)
         new_pic = save_profile_pic(base64_data=captured_data, old_pic=old_pic)
 
     elif uploaded_file and uploaded_file.filename:
-        # Photo was uploaded from file system
         new_pic = save_profile_pic(file=uploaded_file, old_pic=old_pic)
 
     conn.execute("""
@@ -606,12 +685,396 @@ def update_profile():
     return redirect("/dashboard")
 
 # =========================
+# ── RESERVATIONS ──
+# =========================
+
+@app.route("/reserve_sitin", methods=["POST"])
+def reserve_sitin():
+    """Student submits a reservation request."""
+    if "user_id" not in session or session.get("is_admin"):
+        return redirect("/")
+
+    conn = get_db()
+    user = conn.execute("SELECT * FROM users WHERE id=?", (session["user_id"],)).fetchone()
+
+    # Block if already has a pending reservation
+    existing_pending = conn.execute("""
+        SELECT * FROM reservations WHERE student_id=? AND status='PENDING'
+    """, (user["student_id"],)).fetchone()
+
+    if existing_pending:
+        flash("You already have a pending reservation. Please wait for admin approval.", "warning")
+        conn.close()
+        return redirect("/dashboard")
+
+    # Block if already sitting in
+    active_sitin = conn.execute("""
+        SELECT * FROM sitin_records WHERE student_id=? AND status='IN'
+    """, (user["student_id"],)).fetchone()
+
+    if active_sitin:
+        flash("You are currently sitting in. Time out first before making a reservation.", "warning")
+        conn.close()
+        return redirect("/dashboard")
+
+    if user["remaining_session"] <= 0:
+        flash("You have no remaining sessions.", "error")
+        conn.close()
+        return redirect("/dashboard")
+
+    lab     = request.form["lab"]
+    purpose = request.form["purpose"]
+    date    = request.form["date"]
+    time_slot = request.form["time_slot"]
+    name    = f"{user['first_name']} {user['last_name']}"
+
+    conn.execute("""
+        INSERT INTO reservations (student_id, name, purpose, lab, date, time_slot)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (user["student_id"], name, purpose, lab, date, time_slot))
+    conn.commit()
+    conn.close()
+    flash("Reservation submitted! Please wait for admin approval.", "success")
+    return redirect("/dashboard")
+
+
+@app.route("/cancel_reservation/<int:res_id>", methods=["POST"])
+def cancel_reservation(res_id):
+    """Student cancels their own pending reservation."""
+    if "user_id" not in session or session.get("is_admin"):
+        return redirect("/")
+
+    conn = get_db()
+    user = conn.execute("SELECT * FROM users WHERE id=?", (session["user_id"],)).fetchone()
+    conn.execute("""
+        UPDATE reservations SET status='CANCELLED'
+        WHERE id=? AND student_id=? AND status='PENDING'
+    """, (res_id, user["student_id"]))
+    conn.commit()
+    conn.close()
+    flash("Reservation cancelled.", "info")
+    return redirect("/dashboard")
+
+
+@app.route("/admin_reservation_action/<int:res_id>/<action>", methods=["POST"])
+def admin_reservation_action(res_id, action):
+    """Admin accepts or declines a reservation."""
+    if not session.get("is_admin"):
+        return redirect("/")
+
+    if action not in ("accept", "decline"):
+        return redirect("/dashboard")
+
+    admin_note = request.form.get("admin_note", "").strip()
+    new_status = "APPROVED" if action == "accept" else "DECLINED"
+
+    conn = get_db()
+
+    if action == "accept":
+        # Fetch reservation details to auto-create a sit-in record
+        res = conn.execute("SELECT * FROM reservations WHERE id=?", (res_id,)).fetchone()
+        if res and res["status"] == "PENDING":
+            # Check student still has sessions
+            student = conn.execute(
+                "SELECT * FROM users WHERE student_id=?", (res["student_id"],)
+            ).fetchone()
+
+            # Check not already sitting in
+            existing = conn.execute("""
+                SELECT * FROM sitin_records WHERE student_id=? AND status='IN'
+            """, (res["student_id"],)).fetchone()
+
+            if existing:
+                flash("Student is already sitting in — cannot approve reservation.", "error")
+                conn.close()
+                return redirect("/dashboard")
+
+            remaining = student["remaining_session"] if student else 30
+
+            conn.execute("""
+                INSERT INTO sitin_records (student_id, name, purpose, lab, session)
+                VALUES (?, ?, ?, ?, ?)
+            """, (res["student_id"], res["name"], res["purpose"], res["lab"], remaining))
+
+            # Deduct one session
+            conn.execute("""
+                UPDATE users SET remaining_session = remaining_session - 1
+                WHERE student_id=?
+            """, (res["student_id"],))
+
+    conn.execute("""
+        UPDATE reservations SET status=?, admin_note=? WHERE id=?
+    """, (new_status, admin_note, res_id))
+
+    conn.commit()
+    conn.close()
+
+    msg = "Reservation approved — sit-in created!" if action == "accept" else "Reservation declined."
+    flash(msg, "success" if action == "accept" else "warning")
+    return redirect("/dashboard")
+
+
+# =========================
+# SUBMIT FEEDBACK
+# =========================
+@app.route("/submit_feedback", methods=["POST"])
+def submit_feedback():
+    if "user_id" not in session or session.get("is_admin"):
+        return redirect("/")
+
+    sitin_id    = request.form.get("sitin_id", "").strip()
+    rating      = request.form.get("rating", "").strip()
+    feedback_text = request.form.get("feedback_text", "").strip()
+
+    if not sitin_id or not rating or not feedback_text:
+        flash("Please complete the feedback form.", "warning")
+        return redirect("/dashboard")
+
+    conn = get_db()
+    user = conn.execute("SELECT * FROM users WHERE id=?", (session["user_id"],)).fetchone()
+
+    # Make sure the sitin record belongs to this student and is finished
+    record = conn.execute("""
+        SELECT * FROM sitin_records
+        WHERE id=? AND student_id=? AND status='OUT'
+    """, (sitin_id, user["student_id"])).fetchone()
+
+    if not record:
+        flash("Cannot submit feedback for this session.", "error")
+        conn.close()
+        return redirect("/dashboard")
+
+    # Prevent duplicate feedback
+    existing = conn.execute(
+        "SELECT id FROM feedback WHERE sitin_id=?", (sitin_id,)
+    ).fetchone()
+
+    if existing:
+        flash("Feedback already submitted for this session.", "warning")
+        conn.close()
+        return redirect("/dashboard")
+
+    name = f"{user['first_name']} {user['last_name']}"
+    conn.execute("""
+        INSERT INTO feedback (sitin_id, student_id, name, lab, purpose, rating, feedback_text)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (sitin_id, user["student_id"], name, record["lab"], record["purpose"],
+          int(rating), feedback_text))
+    conn.commit()
+    conn.close()
+    flash("Thank you for your feedback!", "success")
+    return redirect("/dashboard")
+
+
+# =========================
 # LOGOUT
 # =========================
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect("/")
+# =========================
+# EXPORT SIT-IN REPORT CSV
+# =========================
+
+@app.route("/export_sitin_report")
+def export_sitin_report():
+    if not session.get("is_admin"):
+        return redirect("/")
+
+    conn = get_db()
+    records = conn.execute("""
+        SELECT student_id, name, purpose, lab, time_in, time_out, status
+        FROM sitin_records
+        ORDER BY time_in DESC
+    """).fetchall()
+    conn.close()
+
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=landscape(A4),
+        rightMargin=1.8*cm, leftMargin=1.8*cm,
+        topMargin=1.8*cm, bottomMargin=1.8*cm
+    )
+
+    styles = getSampleStyleSheet()
+    PURPLE      = colors.HexColor('#5e3a8c')
+    PURPLE_LIGHT= colors.HexColor('#f0ecf8')
+    PURPLE_MID  = colors.HexColor('#ede0ff')
+    GREEN       = colors.HexColor('#10b981')
+    GRAY_TEXT   = colors.HexColor('#888888')
+    DARK        = colors.HexColor('#1a1a2e')
+    ROW_ALT     = colors.HexColor('#faf8ff')
+    BORDER      = colors.HexColor('#e0d8f0')
+
+    story = []
+
+    # ── University header ──
+    univ_style = ParagraphStyle('univ', fontName='Helvetica-Bold',
+                                fontSize=13, textColor=PURPLE,
+                                alignment=TA_CENTER, spaceAfter=2)
+    dept_style = ParagraphStyle('dept', fontName='Helvetica',
+                                fontSize=9, textColor=GRAY_TEXT,
+                                alignment=TA_CENTER, spaceAfter=2)
+    title_style = ParagraphStyle('title', fontName='Helvetica-Bold',
+                                 fontSize=18, textColor=DARK,
+                                 alignment=TA_CENTER, spaceAfter=4)
+    meta_style = ParagraphStyle('meta', fontName='Helvetica',
+                                fontSize=8, textColor=GRAY_TEXT,
+                                alignment=TA_CENTER, spaceAfter=0)
+
+    story.append(Paragraph("UNIVERSITY OF CEBU", univ_style))
+    story.append(Paragraph("College of Computer Studies", dept_style))
+    story.append(Spacer(1, 0.3*cm))
+    story.append(HRFlowable(width="100%", thickness=2, color=PURPLE, spaceAfter=6))
+    story.append(Paragraph("SIT-IN MONITORING REPORT", title_style))
+    story.append(HRFlowable(width="100%", thickness=0.5, color=BORDER, spaceAfter=4))
+    story.append(Paragraph(
+        f"Generated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}",
+        meta_style
+    ))
+    story.append(Spacer(1, 0.5*cm))
+
+    # ── Summary cards ──
+    total    = len(records)
+    still_in = sum(1 for r in records if r["status"] == "IN")
+    done     = total - still_in
+
+    summary_data = [
+        [
+            Paragraph('<b>TOTAL RECORDS</b>', ParagraphStyle('sl', fontName='Helvetica-Bold', fontSize=7, textColor=GRAY_TEXT, alignment=TA_CENTER)),
+            Paragraph('<b>CURRENTLY INSIDE</b>', ParagraphStyle('sl', fontName='Helvetica-Bold', fontSize=7, textColor=GRAY_TEXT, alignment=TA_CENTER)),
+            Paragraph('<b>COMPLETED</b>', ParagraphStyle('sl', fontName='Helvetica-Bold', fontSize=7, textColor=GRAY_TEXT, alignment=TA_CENTER)),
+            Paragraph('<b>REPORT DATE</b>', ParagraphStyle('sl', fontName='Helvetica-Bold', fontSize=7, textColor=GRAY_TEXT, alignment=TA_CENTER)),
+        ],
+        [
+            Paragraph(f'<b>{total}</b>', ParagraphStyle('sv', fontName='Helvetica-Bold', fontSize=20, textColor=PURPLE, alignment=TA_CENTER)),
+            Paragraph(f'<b>{still_in}</b>', ParagraphStyle('sv', fontName='Helvetica-Bold', fontSize=20, textColor=PURPLE, alignment=TA_CENTER)),
+            Paragraph(f'<b>{done}</b>', ParagraphStyle('sv2', fontName='Helvetica-Bold', fontSize=20, textColor=GREEN, alignment=TA_CENTER)),
+            Paragraph(datetime.now().strftime('%b %d, %Y'), ParagraphStyle('sv3', fontName='Helvetica', fontSize=11, textColor=DARK, alignment=TA_CENTER)),
+        ]
+    ]
+
+    page_w = landscape(A4)[0] - 3.6*cm
+    card_w = page_w / 4
+
+    summary_table = Table(summary_data, colWidths=[card_w]*4)
+    summary_table.setStyle(TableStyle([
+        ('BACKGROUND',    (0,0), (-1,-1), PURPLE_LIGHT),
+        ('BACKGROUND',    (0,0), (0,0),   PURPLE_LIGHT),
+        ('ROWBACKGROUNDS',(0,0), (-1,-1), [PURPLE_LIGHT]),
+        ('BOX',           (0,0), (-1,-1), 1, BORDER),
+        ('LINEAFTER',     (0,0), (2,1),   0.5, BORDER),
+        ('TOPPADDING',    (0,0), (-1,-1), 10),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 10),
+        ('ROUNDEDCORNERS',[8]),
+    ]))
+    story.append(summary_table)
+    story.append(Spacer(1, 0.5*cm))
+
+    # ── Main table ──
+    headers = ['#', 'Student ID', 'Name', 'Purpose', 'Lab', 'Date', 'Time In', 'Time Out', 'Duration', 'Status']
+    table_data = [[
+        Paragraph(f'<b>{h}</b>', ParagraphStyle('th', fontName='Helvetica-Bold',
+                  fontSize=8, textColor=colors.white, alignment=TA_CENTER))
+        for h in headers
+    ]]
+
+    for i, r in enumerate(records, 1):
+        time_in  = str(r["time_in"])  if r["time_in"]  else ""
+        time_out = str(r["time_out"]) if r["time_out"] else ""
+        date  = time_in[:10]
+        t_in  = time_in[11:16]  if time_in  else "—"
+        t_out = time_out[11:16] if time_out else "—"
+
+        duration = "ongoing"
+        if time_in and time_out:
+            try:
+                fmt    = "%Y-%m-%d %H:%M:%S"
+                dt_in  = datetime.strptime(time_in[:19],  fmt)
+                dt_out = datetime.strptime(time_out[:19], fmt)
+                mins   = int((dt_out - dt_in).total_seconds() // 60)
+                hrs    = mins // 60
+                duration = f"{hrs}h {mins % 60}m" if hrs > 0 else f"{mins}m"
+            except Exception:
+                duration = "—"
+
+        status_para = Paragraph(
+            '<b>IN</b>' if r["status"] == "IN" else '<b>Done</b>',
+            ParagraphStyle('st', fontName='Helvetica-Bold', fontSize=8,
+                           textColor=PURPLE if r["status"] == "IN" else GREEN,
+                           alignment=TA_CENTER)
+        )
+
+        row_style = ParagraphStyle('rc', fontName='Helvetica', fontSize=8, textColor=DARK)
+        center_style = ParagraphStyle('rcc', fontName='Helvetica', fontSize=8, textColor=DARK, alignment=TA_CENTER)
+
+        table_data.append([
+            Paragraph(str(i),             center_style),
+            Paragraph(r["student_id"],    center_style),
+            Paragraph(r["name"],          row_style),
+            Paragraph(r["purpose"],       row_style),
+            Paragraph(f"Lab {r['lab']}",  center_style),
+            Paragraph(date,               center_style),
+            Paragraph(t_in,               center_style),
+            Paragraph(t_out,              center_style),
+            Paragraph(duration,           center_style),
+            status_para,
+        ])
+
+    col_widths = [0.8*cm, 2.8*cm, 4.5*cm, 3.2*cm, 2*cm, 2.4*cm, 1.9*cm, 1.9*cm, 2*cm, 1.8*cm]
+
+    main_table = Table(table_data, colWidths=col_widths, repeatRows=1)
+
+    row_bgs = []
+    for idx in range(1, len(table_data)):
+        bg = colors.white if idx % 2 == 0 else ROW_ALT
+        row_bgs.append(('BACKGROUND', (0, idx), (-1, idx), bg))
+
+    main_table.setStyle(TableStyle([
+        # Header
+        ('BACKGROUND',    (0,0), (-1,0), PURPLE),
+        ('TEXTCOLOR',     (0,0), (-1,0), colors.white),
+        ('TOPPADDING',    (0,0), (-1,0), 9),
+        ('BOTTOMPADDING', (0,0), (-1,0), 9),
+        ('LINEBELOW',     (0,0), (-1,0), 2, colors.HexColor('#4a2d6f')),
+        # Body rows
+        ('TOPPADDING',    (0,1), (-1,-1), 7),
+        ('BOTTOMPADDING', (0,1), (-1,-1), 7),
+        ('LEFTPADDING',   (0,0), (-1,-1), 8),
+        ('RIGHTPADDING',  (0,0), (-1,-1), 8),
+        ('ROWBACKGROUNDS',(0,1), (-1,-1), [ROW_ALT, colors.white]),
+        ('GRID',          (0,0), (-1,-1), 0.3, BORDER),
+        ('LINEBELOW',     (0,-1),(-1,-1), 1, BORDER),
+        # Status column highlight
+        ('BACKGROUND',    (9,1), (9,-1), colors.white),
+    ] + row_bgs))
+
+    story.append(main_table)
+    story.append(Spacer(1, 0.6*cm))
+
+    # ── Footer ──
+    footer_style = ParagraphStyle('foot', fontName='Helvetica', fontSize=7.5,
+                                  textColor=GRAY_TEXT, alignment=TA_CENTER)
+    story.append(HRFlowable(width="100%", thickness=0.5, color=BORDER, spaceAfter=6))
+    story.append(Paragraph(
+        f"University of Cebu — College of Computer Studies &nbsp;|&nbsp; "
+        f"Total: <b>{total}</b> records &nbsp;|&nbsp; "
+        f"Inside: <b>{still_in}</b> &nbsp;|&nbsp; "
+        f"Completed: <b>{done}</b> &nbsp;|&nbsp; "
+        f"Printed: {datetime.now().strftime('%B %d, %Y %I:%M %p')}",
+        footer_style
+    ))
+
+    doc.build(story)
+    buffer.seek(0)
+
+    filename = f"UC_CCS_Sitin_Report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    response = make_response(buffer.read())
+    response.headers["Content-Disposition"] = f"attachment; filename={filename}"
+    response.headers["Content-Type"] = "application/pdf"
+    return response
 
 # =========================
 # RUN APP
