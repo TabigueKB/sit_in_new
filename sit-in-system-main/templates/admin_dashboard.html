@@ -19,6 +19,88 @@
         .btn-submit { background-color: #198754; color: white; }
         .btn-sitin  { background-color: #0d6efd; color: white; }
 
+        .modal-content {
+            border-radius: 24px;
+            border: 1px solid rgba(94,58,140,0.16);
+            box-shadow: 0 20px 40px rgba(94,58,140,0.12);
+            overflow: hidden;
+        }
+        .modal-header {
+            border-bottom: none;
+            padding-bottom: 1rem;
+        }
+        .modal-body {
+            padding: 1.5rem;
+        }
+        .modal-footer {
+            border-top: none;
+            padding: 1rem 1.5rem 1.5rem;
+        }
+        .modal-title { font-weight: 700; }
+
+        .table-responsive {
+            border-radius: 18px;
+            overflow: hidden;
+            border: 1px solid #e7def7;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.8);
+        }
+        .table {
+            background: #fff;
+            margin-bottom: 0;
+        }
+        .table th,
+        .table td {
+            vertical-align: middle;
+            padding: 14px 16px;
+            border-top: 1px solid #f2eaf8;
+        }
+        .table thead th {
+            background: #5e3a8c;
+            color: white;
+            border-bottom: none;
+            border-top: none;
+        }
+        .table tbody tr {
+            background: #fff;
+        }
+        .table-hover tbody tr:hover {
+            background: #f8f5ff;
+        }
+        .table td {
+            color: #4f4378;
+        }
+        .table .text-muted {
+            color: #7a6a91 !important;
+        }
+
+        .form-control {
+            border-radius: 12px;
+            border: 1px solid #d9cde8;
+            background: #fff;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-control:focus {
+            border-color: rgba(94,58,140,0.55);
+            box-shadow: 0 0 0 0.15rem rgba(94,58,140,0.12);
+        }
+        .modal-body label {
+            font-weight: 700;
+            color: #4e3b7d;
+        }
+
+        .table .badge {
+            font-size: .8rem;
+            padding: 5px 12px;
+            border-radius: 999px;
+        }
+
+        .status-in-badge  { background-color: #cce5ff; color: #004085; }
+        .status-out-badge { background-color: #d4edda; color: #155724; }
+
+        .shadow-sm {
+            box-shadow: 0 10px 30px rgba(94,58,140,0.08) !important;
+        }
+
         /* Profile Picture Styles */
         .profile-pic-wrapper { position: relative; width: 100px; height: 100px; margin: 0 auto 12px; }
         .profile-pic-preview { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #5e3a8c; background: #f0e6ff; display: block; }
@@ -52,14 +134,7 @@
         .res-approved  { background:#d1e7dd; color:#0a3622; padding:3px 10px; border-radius:20px; font-size:.78rem; font-weight:600; border:1px solid #198754; }
         .res-declined  { background:#f8d7da; color:#58151c; padding:3px 10px; border-radius:20px; font-size:.78rem; font-weight:600; border:1px solid #dc3545; }
         .res-cancelled { background:#e2e3e5; color:#41464b; padding:3px 10px; border-radius:20px; font-size:.78rem; font-weight:600; }
-        
-        /* Sit-in form fields */
-        .sitin-lbl { font-size:11px; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:.05em; display:block; margin-bottom:5px; }
-        .sitin-input { width:100%; height:38px; border:1px solid #e0d8f0; border-radius:8px; padding:0 12px; font-size:13px; background:#faf8ff; box-sizing:border-box; outline:none; }
-        .sitin-input:focus { border-color:#5e3a8c; box-shadow:0 0 0 3px rgba(94,58,140,0.1); }
-        .sitin-select { width:100%; height:38px; border:1px solid #e0d8f0; border-radius:8px; padding:0 12px; font-size:13px; background:#faf8ff; outline:none; }
-        .sitin-select:focus { border-color:#5e3a8c; box-shadow:0 0 0 3px rgba(94,58,140,0.1); }
-        
+
         /* Pending notification dot */
         .notif-dot {
             display: inline-flex; align-items: center; justify-content: center;
@@ -158,15 +233,95 @@
     </div>
 </div>
 
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">🖥️ PC Availability Manager</div>
+                <div class="card-body">
+                    <form method="POST" action="/save_pc_availability">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label">Lab</label>
+                                <select name="room_number" class="form-control" required>
+                                    <option value="">Select a lab</option>
+                                    {% for room in rooms %}
+                                    <option value="{{ room.room_number }}">Lab {{ room.room_number }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Date</label>
+                                <input id="availabilityDate" type="date" name="availability_date" class="form-control" required>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Time Start</label>
+                                <input type="time" name="time_start" class="form-control" placeholder="e.g. 08:00">
+                                <small class="text-muted">Optional</small>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Time End</label>
+                                <input type="time" name="time_end" class="form-control" placeholder="e.g. 12:00">
+                                <small class="text-muted">Optional</small>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Available PCs</label>
+                                <input type="text" name="available_pcs" class="form-control" placeholder="e.g. 1-7, 10, 15-20" required>
+                                <small class="text-muted">e.g. 1–50 by default</small>
+                            </div>
+                        </div>
+                        <button class="btn btn-purple btn-sm mt-3">Save Availability</button>
+                    </form>
+
+                    {% if pc_availabilities %}
+                    <div class="table-responsive mt-4">
+                        <table class="table table-sm table-bordered align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Lab</th>
+                                    <th>Date</th>
+                                    <th>Time Window</th>
+                                    <th>Available PCs</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in pc_availabilities %}
+                                <tr>
+                                    <td><strong>Lab {{ item.room_number }}</strong></td>
+                                    <td>{{ item.date }}</td>
+                                    <td>
+                                        {% if item.time_start and item.time_end %}
+                                            {{ item.time_start }} – {{ item.time_end }}
+                                        {% else %}
+                                            <span class="text-muted">All day</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ item.available_pcs }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-muted mt-3">
+                        No PC availability schedules configured yet. Labs default to PCs 1–50 unless the admin sets a date-specific availability.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- ══════════════════════════════════════════
-     RESERVATIONS MODAL
+     RESERVATIONS MODAL  (Pending Log only)
 ══════════════════════════════════════════ -->
 <div class="modal fade" id="reservationsModal" tabindex="-1">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header" style="background-color:#5e3a8c; color:white;">
                 <h5 class="modal-title">
-                    🗓️ Student Reservations
+                    🗓️ Reservation Log — Pending Requests
                     {% if pending_reservations_count > 0 %}
                         <span class="badge bg-warning text-dark ms-2">{{ pending_reservations_count }} pending</span>
                     {% endif %}
@@ -174,102 +329,53 @@
                 <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-
-                <!-- Filter bar -->
-                <div class="report-filter-bar d-flex flex-wrap gap-2 align-items-end mb-3">
-                    <div>
-                        <label class="form-label mb-1" style="font-size:.82rem; font-weight:600;">Filter by Status</label>
-                        <select id="resStatusFilter" class="form-control form-control-sm" style="width:140px;">
-                            <option value="">All</option>
-                            <option value="PENDING">Pending</option>
-                            <option value="APPROVED">Approved</option>
-                            <option value="DECLINED">Declined</option>
-                            <option value="CANCELLED">Cancelled</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="form-label mb-1" style="font-size:.82rem; font-weight:600;">Filter by Lab</label>
-                        <select id="resLabFilter" class="form-control form-control-sm" style="width:130px;">
-                            <option value="">All Labs</option>
-                            {% for room in rooms %}
-                            <option>{{ room.room_number }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="ms-auto">
-                        <button class="btn btn-sm btn-outline-secondary" onclick="clearResFilters()">Clear Filters</button>
-                    </div>
-                </div>
-
+                {% if reservations | selectattr('status','equalto','PENDING') | list %}
                 <div class="table-responsive">
                     <table id="reservationsTable" class="table table-bordered table-hover w-100 align-middle" style="font-size:.87rem;">
                         <thead class="table-dark">
                             <tr>
-                                <th>#</th>
-                                <th>Student ID</th>
-                                <th>Name</th>
-                                <th>Lab</th>
-                                <th>Purpose</th>
-                                <th>Date</th>
-                                <th>Time Slot</th>
-                                <th>Submitted</th>
-                                <th>Status</th>
-                                <th>Admin Note</th>
-                                <th style="min-width:200px;">Actions</th>
+                                <th>#</th><th>Student ID</th><th>Name</th><th>Lab</th>
+                                <th>PC</th><th>Purpose</th><th>Date</th><th>Time Slot</th>
+                                <th>Submitted</th><th style="min-width:200px;">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {% for r in reservations %}
+                            {% for r in reservations if r.status == 'PENDING' %}
                             <tr>
                                 <td class="text-muted">{{ loop.index }}</td>
                                 <td>{{ r.student_id }}</td>
                                 <td>{{ r.name }}</td>
                                 <td><strong>Lab {{ r.lab }}</strong></td>
+                                <td><strong>PC {{ r.pc_number }}</strong></td>
                                 <td>{{ r.purpose }}</td>
                                 <td>{{ r.date }}</td>
                                 <td style="font-size:.8rem;">{{ r.time_slot }}</td>
-                                <td style="font-size:.78rem; color:#666;">
-                                    {{ (r.created_at | string)[:16] }}
-                                </td>
+                                <td style="font-size:.78rem;color:#666;">{{ (r.created_at | string)[:16] }}</td>
                                 <td>
-                                    {% if r.status == 'PENDING' %}
-                                        <span class="res-pending">⏳ Pending</span>
-                                    {% elif r.status == 'APPROVED' %}
-                                        <span class="res-approved">✅ Approved</span>
-                                    {% elif r.status == 'DECLINED' %}
-                                        <span class="res-declined">❌ Declined</span>
-                                    {% else %}
-                                        <span class="res-cancelled">— Cancelled</span>
-                                    {% endif %}
-                                </td>
-                                <td style="font-size:.78rem; color:#555; max-width:140px;">
-                                    {{ r.admin_note if r.admin_note else '—' }}
-                                </td>
-                                <td>
-                                    {% if r.status == 'PENDING' %}
                                     <div class="action-row">
-                                        <!-- Accept -->
-                                        <form method="POST"
-                                              action="/admin_reservation_action/{{ r.id }}/accept"
-                                              onsubmit="return confirmAction(this, 'approve')">
+                                        <form method="POST" action="/admin_reservation_action/{{ r.id }}/accept"
+                                              onsubmit="return confirmAction(this,'approve')">
                                             <input type="hidden" name="admin_note" value="">
                                             <button class="btn btn-success btn-sm">✅ Accept</button>
                                         </form>
-                                        <!-- Decline (opens mini note popup) -->
                                         <button class="btn btn-danger btn-sm"
-                                                onclick="openDeclineModal({{ r.id }}, '{{ r.name }}')">
+                                                onclick="openDeclineModal({{ r.id }},'{{ r.name }}')">
                                             ❌ Decline
                                         </button>
                                     </div>
-                                    {% else %}
-                                        <span class="text-muted" style="font-size:.78rem;">No action needed</span>
-                                    {% endif %}
                                 </td>
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
+                {% else %}
+                <div class="text-center text-muted py-5">
+                    <div style="font-size:3rem;">🎉</div>
+                    <h5 class="mt-2">No pending reservations!</h5>
+                    <p class="mb-0">All reservation requests have been handled.</p>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -401,75 +507,82 @@
 
 <!-- SEARCH MODAL -->
 <div class="modal fade" id="searchModal" tabindex="-1">
-    <div class="modal-dialog" style="max-width:420px;">
-        <div class="modal-content" style="border-radius:16px;overflow:hidden;border:none;">
-
-            <div class="modal-header border-0" style="background:#5e3a8c;padding:16px 22px;">
-                <div class="d-flex align-items-center gap-3">
-                    <div style="width:34px;height:34px;background:rgba(255,255,255,0.15);border-radius:9px;display:flex;align-items:center;justify-content:center;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2">
-                            <circle cx="11" cy="11" r="8"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35"/>
-                        </svg>
-                    </div>
-                    <div>
-                        <h5 class="modal-title mb-0" style="color:white;font-size:14px;">Search Student</h5>
-                        <p class="mb-0" style="color:rgba(255,255,255,0.55);font-size:11px;">Find by ID, name, or course</p>
-                    </div>
-                </div>
-                <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Search Student</h5>
+                <button class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-
-            <div class="modal-body" style="padding:22px;">
+            <div class="modal-body">
                 <form method="GET" action="/search_student">
-                    <label class="sitin-lbl">Search query</label>
-                    <div style="display:flex;border:1px solid #e0d8f0;border-radius:10px;overflow:hidden;background:#faf8ff;">
-                        <input id="searchInput" name="search"
-                               value="{{ search }}"
-                               placeholder="e.g. 2021-00234 or Juan Dela Cruz…"
-                               required
-                               style="flex:1;height:42px;border:none;padding:0 14px;font-size:13px;background:transparent;outline:none;color:#222;">
-                        <button type="submit"
-                                style="height:42px;padding:0 18px;background:#5e3a8c;color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2.5">
-                                <circle cx="11" cy="11" r="8"/>
-                                <path stroke-linecap="round" d="M21 21l-4.35-4.35"/>
-                            </svg>
-                            Search
-                        </button>
+                    <div class="mb-3">
+                        <label for="searchInput">Search by ID, first name, or last name</label>
+                        <input id="searchInput" name="search" class="form-control" value="{{ search }}" placeholder="e.g. 123 or Juan" required>
                     </div>
-                    <p style="font-size:11px;color:#aaa;margin-top:8px;margin-bottom:14px;">
-                        You can search by student ID, first name, or last name.
-                    </p>
-                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                        <span onclick="document.getElementById('searchInput').value='BSIT';this.closest('form').submit();"
-                              style="background:#f0ecf8;color:#5e3a8c;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;cursor:pointer;border:1px solid #e0d8f0;">
-                            BSIT
-                        </span>
-                        <span onclick="document.getElementById('searchInput').value='BSCS';this.closest('form').submit();"
-                              style="background:#f0ecf8;color:#5e3a8c;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;cursor:pointer;border:1px solid #e0d8f0;">
-                            BSCS
-                        </span>
-                        <span onclick="document.getElementById('searchInput').value='1';this.closest('form').submit();"
-                              style="background:#f0ecf8;color:#5e3a8c;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;cursor:pointer;border:1px solid #e0d8f0;">
-                            Year 1
-                        </span>
-                        <span onclick="document.getElementById('searchInput').value='2';this.closest('form').submit();"
-                              style="background:#f0ecf8;color:#5e3a8c;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;cursor:pointer;border:1px solid #e0d8f0;">
-                            Year 2
-                        </span>
-                        <span onclick="document.getElementById('searchInput').value='3';this.closest('form').submit();"
-                              style="background:#f0ecf8;color:#5e3a8c;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;cursor:pointer;border:1px solid #e0d8f0;">
-                            Year 3
-                        </span>
-                        <span onclick="document.getElementById('searchInput').value='4';this.closest('form').submit();"
-                              style="background:#f0ecf8;color:#5e3a8c;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;cursor:pointer;border:1px solid #e0d8f0;">
-                            Year 4
-                        </span>
-                    </div>
+                    <button class="btn btn-purple w-100">Search</button>
                 </form>
             </div>
+        </div>
+    </div>
+</div>
 
+<!-- STUDENTS MODAL -->
+<div class="modal fade" id="studentsModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    Students Information
+                    {% if search %}
+                        — results for "<strong>{{ search }}</strong>"
+                        <a href="/dashboard" class="btn btn-sm btn-outline-secondary ms-2">Clear</a>
+                    {% endif %}
+                </h5>
+                <button class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+                    <button class="btn btn-purple btn-sm" data-bs-toggle="modal" data-bs-target="#addStudentModal">Add Students</button>
+                    <form method="POST" action="/reset_all_sessions" class="d-inline">
+                        <button class="btn btn-secondary btn-sm" onclick="return confirm('Reset all sessions to 30?')">Reset All Session</button>
+                    </form>
+                </div>
+                <div class="table-responsive shadow-sm rounded-4">
+                    <table id="studentListTable" class="table table-hover align-middle mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>ID Number</th>
+                                <th>Name</th>
+                                <th>Year Level</th>
+                                <th>Course</th>
+                                <th>Remaining Session</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for s in students %}
+                            <tr>
+                                <td class="text-muted">{{ s.student_id }}</td>
+                                <td>{{ s.first_name }} {{ s.middle_name }} {{ s.last_name }}</td>
+                                <td>{{ s.course_level }}</td>
+                                <td>{{ s.course }}</td>
+                                <td>{{ s.remaining_session if s.remaining_session else 30 }}</td>
+                                <td>
+                                    <button class="btn btn-purple btn-sm"
+                                            onclick="openEditModal('{{ s.student_id }}','{{ s.first_name }}','{{ s.last_name }}','{{ s.course }}','{{ s.course_level }}','{{ s.email }}')">
+                                        Edit
+                                    </button>
+                                    <form method="POST" action="/delete_student/{{ s.student_id }}" class="d-inline"
+                                          onsubmit="return confirm('Delete this student?')">
+                                        <button class="btn btn-danger btn-sm">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -477,81 +590,52 @@
 <!-- SIT-IN FORM MODAL -->
 <div class="modal fade" id="sitInModal" tabindex="-1">
     <div class="modal-dialog">
-        <div class="modal-content" style="border-radius:16px;overflow:hidden;border:none;">
-
-            <div class="modal-header border-0 pb-0" style="background:#5e3a8c;padding:16px 22px;">
-                <div class="d-flex align-items-center gap-3">
-                    <div style="width:34px;height:34px;background:rgba(255,255,255,0.15);border-radius:9px;display:flex;align-items:center;justify-content:center;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
-                        </svg>
-                    </div>
-                    <div>
-                        <h5 class="modal-title mb-0" style="color:white;font-size:14px;">Sit-in Form</h5>
-                        <p class="mb-0" style="color:rgba(255,255,255,0.55);font-size:11px;">Register a student session</p>
-                    </div>
-                </div>
-                <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Sit In Form</h5>
+                <button class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-
-            <div class="modal-body" style="padding:22px;">
+            <div class="modal-body">
                 <form method="POST" action="/sitin" id="sitInForm">
-
-                    <label class="sitin-lbl">Student ID</label>
-                    <input id="sitInIdNumber" name="id_number"
-                           class="sitin-input mb-3" placeholder="Enter student ID…" required>
-
-                    <!-- Student card — shown after lookup -->
-                    <div id="studentInfoCard" style="display:none;background:#f8f5ff;border:1px solid #e0d8f0;border-radius:10px;padding:12px 16px;margin-bottom:16px;">
-                        <div class="d-flex align-items-center gap-3">
-                            <div id="studentAvatar" style="width:42px;height:42px;border-radius:50%;background:#5e3a8c;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0;">—</div>
-                            <div style="flex:1;">
-                                <p id="studentCardName" style="font-size:14px;font-weight:600;color:#3a1f6e;margin:0;">—</p>
-                                <p id="studentCardMeta" style="font-size:12px;color:#888;margin:0;">—</p>
-                            </div>
-                            <span id="studentSessionPill" style="background:#5e3a8c;color:#fff;font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px;">— sessions</span>
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label for="sitInIdNumber">ID Number</label>
+                            <input id="sitInIdNumber" name="id_number" class="form-control" required>
                         </div>
-                    </div>
-
-                    <input id="sitInStudentName" name="student_name" type="hidden">
-
-                    <div class="row g-3 mb-3">
-                        <div class="col-6">
-                            <label class="sitin-lbl">Purpose</label>
-                            <select id="sitInPurpose" name="purpose" class="sitin-select" required>
-                                <option value="">Select…</option>
+                        <div class="col-12">
+                            <label for="sitInStudentName">Student Name</label>
+                            <input id="sitInStudentName" name="student_name" class="form-control" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="sitInPurpose">Purpose</label>
+                            <select id="sitInPurpose" name="purpose" class="form-control" required>
+                                <option value="">Select</option>
                                 <option>C Programming</option>
                                 <option>Java</option>
                                 <option>C#</option>
                                 <option>PHP</option>
                             </select>
                         </div>
-                        <div class="col-6">
-                            <label class="sitin-lbl">Lab</label>
-                            <select id="sitInLab" name="lab" class="sitin-select" required>
-                                <option value="">Select…</option>
+                        <div class="col-md-6">
+                            <label for="sitInLab">Lab</label>
+                            <select id="sitInLab" name="lab" class="form-control" required>
+                                <option value="">Select</option>
                                 {% for room in rooms %}
                                 <option>{{ room.room_number }}</option>
                                 {% endfor %}
                             </select>
                         </div>
+                        <div class="col-md-6">
+                            <label for="sitInRemainingSession">Remaining</label>
+                            <input id="sitInRemainingSession" name="remaining_session" class="form-control" readonly>
+                        </div>
                     </div>
-
-                    <input id="sitInRemainingSession" name="remaining_session" type="hidden">
                 </form>
             </div>
-
-            <div class="modal-footer" style="padding:14px 22px;border-top:1px solid #f0ecf8;">
-        <button class="btn btn-sm" data-bs-dismiss="modal"
-            style="height:34px;padding:0 18px;border:1px solid #e0d8f0;border-radius:8px;background:transparent;color:#888;font-size:13px;cursor:pointer;">
-        Cancel
-            </button>
-        <button form="sitInForm" class="btn btn-sm"
-            style="height:34px;padding:0 18px;border:none;border-radius:8px;background:#5e3a8c;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">
-        Sit In
-    </button>
-        </div>
-
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button form="sitInForm" class="btn btn-sitin">Sit In</button>
+            </div>
         </div>
     </div>
 </div>
@@ -559,142 +643,49 @@
 <!-- VIEW SIT-IN RECORDS MODAL -->
 <div class="modal fade" id="recordsModal" tabindex="-1">
     <div class="modal-dialog modal-xl">
-        <div class="modal-content" style="border-radius:16px; overflow:hidden; border:none;">
-
-            <!-- Header -->
-            <div class="modal-header border-0 pb-0" style="background:#5e3a8c; padding:18px 24px;">
-                <div class="d-flex align-items-center gap-3">
-                    <div style="width:36px;height:36px;background:rgba(255,255,255,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-                        </svg>
-                    </div>
-                    <div>
-                        <h5 class="modal-title mb-0" style="color:white;font-size:15px;">Current Sit-in</h5>
-                        <p class="mb-0" style="color:rgba(255,255,255,0.6);font-size:12px;">Live session monitor</p>
-                    </div>
-                </div>
-                <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Current Sit-in</h5>
+                <button class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-
-            <!-- Stats strip -->
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid #eee;">
-                <div style="padding:14px 20px;text-align:center;border-right:1px solid #eee;">
-                    <p style="font-size:22px;font-weight:600;color:#5e3a8c;margin:0;" id="statCountIn">—</p>
-                    <p style="font-size:11px;color:#888;margin:0;text-transform:uppercase;letter-spacing:.04em;">Currently Inside</p>
-                </div>
-                <div style="padding:14px 20px;text-align:center;border-right:1px solid #eee;">
-                    <p style="font-size:22px;font-weight:600;color:#5e3a8c;margin:0;" id="statCountTotal">—</p>
-                    <p style="font-size:11px;color:#888;margin:0;text-transform:uppercase;letter-spacing:.04em;">Total Records</p>
-                </div>
-                <div style="padding:14px 20px;text-align:center;">
-                    <p style="font-size:22px;font-weight:600;color:#10b981;margin:0;" id="statCountDone">—</p>
-                    <p style="font-size:11px;color:#888;margin:0;text-transform:uppercase;letter-spacing:.04em;">Completed</p>
-                </div>
-            </div>
-
-            <div class="modal-body" style="padding:20px 24px;">
-
-                <!-- Search + filter row -->
-<div class="d-flex gap-2 mb-3 align-items-center flex-wrap">
-    <input type="text" id="recordsSearch" class="form-control form-control-sm"
-           placeholder="Search by name, ID, or lab…"
-           style="max-width:280px;border-radius:8px;border:1px solid #e0d8f0;background:#faf8ff;font-size:13px;">
-
-    <div class="dropdown">
-        <button id="recordsFilterBtn" class="dropdown-toggle"
-                data-bs-toggle="dropdown" aria-expanded="false"
-                style="height:32px;padding:0 14px;border:1px solid #e0d8f0;border-radius:8px;font-size:12px;background:#f8f5ff;color:#5e3a8c;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;">
-            <span style="width:8px;height:8px;border-radius:50%;background:#5e3a8c;display:inline-block;"></span>
-            <span id="recordsFilterLabel">All</span>
-        </button>
-        <ul class="dropdown-menu" style="min-width:140px;border-radius:10px;border:1px solid #e0d8f0;padding:6px;box-shadow:0 4px 16px rgba(94,58,140,0.1);">
-            <li>
-                <button class="dropdown-item records-filter-opt"
-                        data-filter="" data-label="All" data-color="#5e3a8c"
-                        onclick="filterRecords(this)"
-                        style="border-radius:7px;font-size:13px;padding:7px 12px;display:flex;align-items:center;gap:8px;">
-                    <span style="width:8px;height:8px;border-radius:50%;background:#5e3a8c;flex-shrink:0;"></span>
-                    All
-                </button>
-            </li>
-            <li>
-                <button class="dropdown-item records-filter-opt"
-                        data-filter="IN" data-label="Still In" data-color="#5e3a8c"
-                        onclick="filterRecords(this)"
-                        style="border-radius:7px;font-size:13px;padding:7px 12px;display:flex;align-items:center;gap:8px;">
-                    <span style="width:8px;height:8px;border-radius:50%;background:#5e3a8c;animation:pulse 1.5s infinite;flex-shrink:0;"></span>
-                    Still In
-                </button>
-            </li>
-            <li>
-                <button class="dropdown-item records-filter-opt"
-                        data-filter="OUT" data-label="Done" data-color="#10b981"
-                        onclick="filterRecords(this)"
-                        style="border-radius:7px;font-size:13px;padding:7px 12px;display:flex;align-items:center;gap:8px;">
-                    <span style="width:8px;height:8px;border-radius:50%;background:#10b981;flex-shrink:0;"></span>
-                    Done
-                </button>
-            </li>
-        </ul>
-    </div>
-</div>
-
-                <div class="table-responsive">
-                    <table id="sitInRecordTable" class="table w-100 align-middle" style="font-size:13px;border-collapse:collapse;">
-                        <thead>
-                            <tr style="background:#f8f5ff;">
-                                <th style="padding:9px 12px;font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #eee;">Sit ID</th>
-                                <th style="padding:9px 12px;font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #eee;">Student ID</th>
-                                <th style="padding:9px 12px;font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #eee;">Name</th>
-                                <th style="padding:9px 12px;font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #eee;">Purpose</th>
-                                <th style="padding:9px 12px;font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #eee;">Lab</th>
-                                <th style="padding:9px 12px;font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #eee;">Session</th>
-                                <th style="padding:9px 12px;font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #eee;">Status</th>
-                                <th style="padding:9px 12px;font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #eee;">Action</th>
+            <div class="modal-body">
+                <div class="table-responsive shadow-sm rounded-4">
+                    <table id="sitInRecordTable" class="table table-hover align-middle mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Sit ID Number</th>
+                                <th>ID Number</th>
+                                <th>Name</th>
+                                <th>Purpose</th>
+                                <th>Sit Lab</th>
+                                <th>Session</th>
+                                <th>Status</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for s in sitin_records %}
-                            <tr class="record-row" data-status="{{ s.status }}"
-                                data-search="{{ s.student_id }} {{ s.name }} {{ s.lab }}">
-                                <td style="padding:11px 12px;border-bottom:1px solid #f0f0f0;color:#aaa;font-family:monospace;font-size:12px;">#{{ s.id }}</td>
-                                <td style="padding:11px 12px;border-bottom:1px solid #f0f0f0;">{{ s.student_id }}</td>
-                                <td style="padding:11px 12px;border-bottom:1px solid #f0f0f0;">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <div style="width:30px;height:30px;border-radius:50%;background:#ede0ff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#5e3a8c;flex-shrink:0;">
-                                            {{ s.name[:2].upper() }}
-                                        </div>
-                                        <span>{{ s.name }}</span>
-                                    </div>
-                                </td>
-                                <td style="padding:11px 12px;border-bottom:1px solid #f0f0f0;">{{ s.purpose }}</td>
-                                <td style="padding:11px 12px;border-bottom:1px solid #f0f0f0;">
-                                    <span style="background:#f4f4f4;border:0.5px solid #ddd;color:#555;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">
-                                        Lab {{ s.lab }}
-                                    </span>
-                                </td>
-                                <td style="padding:11px 12px;border-bottom:1px solid #f0f0f0;">{{ s.session if s.session else s.time_in }}</td>
-                                <td style="padding:11px 12px;border-bottom:1px solid #f0f0f0;">
+                            <tr>
+                                <td class="text-muted">{{ s.id }}</td>
+                                <td>{{ s.student_id }}</td>
+                                <td>{{ s.name }}</td>
+                                <td>{{ s.purpose }}</td>
+                                <td><strong>{{ s.lab }}</strong></td>
+                                <td>{{ s.session if s.session else s.time_in }}</td>
+                                <td>
                                     {% if s.status == 'IN' %}
-                                    <span style="display:inline-flex;align-items:center;gap:5px;background:#ede0ff;color:#5e3a8c;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;">
-                                        <span style="width:6px;height:6px;background:#5e3a8c;border-radius:50%;animation:pulse 1.5s infinite;"></span> IN
-                                    </span>
+                                        <span class="badge status-in-badge">IN</span>
                                     {% else %}
-                                    <span style="display:inline-flex;align-items:center;gap:5px;background:#d1fae5;color:#065f46;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;">
-                                        <span style="width:6px;height:6px;background:#10b981;border-radius:50%;"></span> Done
-                                    </span>
+                                        <span class="badge status-out-badge">OUT</span>
                                     {% endif %}
                                 </td>
-                                <td style="padding:11px 12px;border-bottom:1px solid #f0f0f0;">
+                                <td>
                                     {% if s.status == 'IN' %}
                                     <form method="POST" action="/timeout/{{ s.id }}" class="d-inline">
-                                        <button style="background:#5e3a8c;color:white;border:none;padding:5px 14px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;">
-                                            Time Out
-                                        </button>
+                                        <button class="btn btn-danger btn-sm">OUT</button>
                                     </form>
                                     {% else %}
-                                    <span style="color:#10b981;font-size:12px;font-weight:500;">✓ Completed</span>
+                                    <span class="text-success fw-bold">Done</span>
                                     {% endif %}
                                 </td>
                             </tr>
@@ -703,7 +694,6 @@
                     </table>
                 </div>
             </div>
-
         </div>
     </div>
 </div>
@@ -717,196 +707,204 @@
                 <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <div class="report-filter-bar d-flex flex-wrap gap-2 align-items-end">
-                    <div>
-                        <label class="form-label mb-1" style="font-size:.82rem; font-weight:600;">Filter by Date</label>
-                        <input type="date" id="reportDateFilter" class="form-control form-control-sm" style="width:160px;">
+
+                <!-- Tabs -->
+                <ul class="nav nav-tabs mb-3" id="reportTabs">
+                    <li class="nav-item">
+                        <a class="nav-link active" data-bs-toggle="tab" href="#tabSitinRecords">🖥️ Sit-in Records</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#tabReservationHistory">🗓️ Reservation History</a>
+                    </li>
+                </ul>
+
+                <div class="tab-content">
+
+                    <!-- Tab 1: Sit-in Records -->
+                    <div class="tab-pane fade show active" id="tabSitinRecords">
+                        <div class="report-filter-bar d-flex flex-wrap gap-2 align-items-end mb-3">
+                            <div>
+                                <label class="form-label mb-1" style="font-size:.82rem;font-weight:600;">Filter by Date</label>
+                                <input type="date" id="reportDateFilter" class="form-control form-control-sm" style="width:160px;">
+                            </div>
+                            <div>
+                                <label class="form-label mb-1" style="font-size:.82rem;font-weight:600;">Filter by Lab</label>
+                                <select id="reportLabFilter" class="form-control form-control-sm" style="width:130px;">
+                                    <option value="">All Labs</option>
+                                    {% for room in rooms %}<option>{{ room.room_number }}</option>{% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label mb-1" style="font-size:.82rem;font-weight:600;">Filter by Status</label>
+                                <select id="reportStatusFilter" class="form-control form-control-sm" style="width:120px;">
+                                    <option value="">All</option>
+                                    <option value="IN">Still In</option>
+                                    <option value="OUT">Completed</option>
+                                </select>
+                            </div>
+                            <div class="ms-auto d-flex gap-2">
+                                <button class="btn btn-sm btn-outline-secondary" onclick="clearReportFilters()">Clear Filters</button>
+                                <a href="/export_sitin_report" class="btn btn-sm btn-purple">⬇ Export PDF</a>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table id="sitInReportsTable" class="table table-bordered table-hover w-100 align-middle">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>#</th><th>Student ID</th><th>Name</th><th>Purpose</th>
+                                        <th>Lab</th><th>Date</th><th>Time In</th><th>Time Out</th>
+                                        <th>Duration</th><th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for r in sitin_records %}
+                                    <tr>
+                                        <td class="text-muted" style="font-size:.82rem;">{{ loop.index }}</td>
+                                        <td>{{ r.student_id }}</td>
+                                        <td>{{ r.name }}</td>
+                                        <td>{{ r.purpose }}</td>
+                                        <td><strong>Lab {{ r.lab }}</strong></td>
+                                        <td><span class="report-date">{{ (r.time_in | string)[:10] }}</span></td>
+                                        <td><span class="report-time-in">🟢 {{ (r.time_in | string)[11:16] }}</span></td>
+                                        <td>
+                                            {% if r.time_out %}
+                                                <span class="report-time-out">🔴 {{ (r.time_out | string)[11:16] }}</span>
+                                            {% else %}
+                                                <span class="report-still-in">● Still Inside</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if r.time_out %}
+                                                <span class="duration-badge" data-timein="{{ r.time_in }}" data-timeout="{{ r.time_out }}">—</span>
+                                            {% else %}
+                                                <span class="text-muted" style="font-size:.78rem;">ongoing</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if r.status == 'IN' %}
+                                                <span class="status-in-badge">IN</span>
+                                            {% else %}
+                                                <span class="status-out-badge">Done</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                    <div>
-                        <label class="form-label mb-1" style="font-size:.82rem; font-weight:600;">Filter by Lab</label>
-                        <select id="reportLabFilter" class="form-control form-control-sm" style="width:130px;">
-                            <option value="">All Labs</option>
-                            {% for room in rooms %}
-                            <option>{{ room.room_number }}</option>
-                            {% endfor %}
-                        </select>
+
+                    <!-- Tab 2: Reservation History (approved/declined/cancelled) -->
+                    <div class="tab-pane fade" id="tabReservationHistory">
+                        <div class="d-flex flex-wrap gap-2 align-items-end mb-3">
+                            <div>
+                                <label class="form-label mb-1" style="font-size:.82rem;font-weight:600;">Filter by Status</label>
+                                <select id="resHistStatusFilter" class="form-control form-control-sm" style="width:150px;" onchange="filterResHistory()">
+                                    <option value="">All (excl. Pending)</option>
+                                    <option value="APPROVED">Approved</option>
+                                    <option value="DECLINED">Declined</option>
+                                    <option value="CANCELLED">Cancelled</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label mb-1" style="font-size:.82rem;font-weight:600;">Filter by Lab</label>
+                                <select id="resHistLabFilter" class="form-control form-control-sm" style="width:130px;" onchange="filterResHistory()">
+                                    <option value="">All Labs</option>
+                                    {% for room in rooms %}<option>{{ room.room_number }}</option>{% endfor %}
+                                </select>
+                            </div>
+                            <div class="ms-auto">
+                                <button class="btn btn-sm btn-outline-secondary"
+                                    onclick="document.getElementById('resHistStatusFilter').value='';
+                                             document.getElementById('resHistLabFilter').value='';
+                                             filterResHistory();">Clear</button>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table id="resHistoryTable" class="table table-bordered table-hover w-100 align-middle" style="font-size:.87rem;">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>#</th><th>Student ID</th><th>Name</th><th>Lab</th><th>PC</th>
+                                        <th>Purpose</th><th>Date</th><th>Time Slot</th><th>Submitted</th>
+                                        <th>Status</th><th>Admin Note</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="resHistoryBody">
+                                    {% for r in reservations if r.status != 'PENDING' %}
+                                    <tr data-status="{{ r.status }}" data-lab="{{ r.lab }}">
+                                        <td class="text-muted">{{ loop.index }}</td>
+                                        <td>{{ r.student_id }}</td>
+                                        <td>{{ r.name }}</td>
+                                        <td><strong>Lab {{ r.lab }}</strong></td>
+                                        <td><strong>PC {{ r.pc_number }}</strong></td>
+                                        <td>{{ r.purpose }}</td>
+                                        <td>{{ r.date }}</td>
+                                        <td style="font-size:.8rem;">{{ r.time_slot }}</td>
+                                        <td style="font-size:.78rem;color:#666;">{{ (r.created_at | string)[:16] }}</td>
+                                        <td>
+                                            {% if r.status == 'APPROVED' %}
+                                                <span class="res-approved">✅ Approved</span>
+                                            {% elif r.status == 'DECLINED' %}
+                                                <span class="res-declined">❌ Declined</span>
+                                            {% else %}
+                                                <span class="res-cancelled">— Cancelled</span>
+                                            {% endif %}
+                                        </td>
+                                        <td style="font-size:.78rem;color:#555;">{{ r.admin_note if r.admin_note else '—' }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                    <div>
-                        <label class="form-label mb-1" style="font-size:.82rem; font-weight:600;">Filter by Status</label>
-                        <select id="reportStatusFilter" class="form-control form-control-sm" style="width:120px;">
-                            <option value="">All</option>
-                            <option value="IN">Still In</option>
-                            <option value="OUT">Completed</option>
-                        </select>
-                    </div>
-                    <div class="ms-auto d-flex gap-2">
-                        <button class="btn btn-sm btn-outline-secondary" onclick="clearReportFilters()">Clear Filters</button>
-                        <a href="/export_sitin_report" class="btn btn-sm btn-purple">⬇ Export PDF</a>
-                    </div>
-                </div>
-                <div class="table-responsive">
-                    <table id="sitInReportsTable" class="table table-bordered table-hover w-100 align-middle">
-                        <thead class="table-dark">
-                            <tr>
-                                <th>#</th>
-                                <th>Student ID</th>
-                                <th>Name</th>
-                                <th>Purpose</th>
-                                <th>Lab</th>
-                                <th>Date</th>
-                                <th>Time In</th>
-                                <th>Time Out</th>
-                                <th>Duration</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for r in sitin_records %}
-                            <tr>
-                                <td class="text-muted" style="font-size:.82rem;">{{ loop.index }}</td>
-                                <td>{{ r.student_id }}</td>
-                                <td>{{ r.name }}</td>
-                                <td>{{ r.purpose }}</td>
-                                <td><strong>Lab {{ r.lab }}</strong></td>
-                                <td><span class="report-date">{{ (r.time_in | string)[:10] }}</span></td>
-                                <td><span class="report-time-in">🟢 {{ (r.time_in | string)[11:16] }}</span></td>
-                                <td>
-                                    {% if r.time_out %}
-                                        <span class="report-time-out">🔴 {{ (r.time_out | string)[11:16] }}</span>
-                                    {% else %}
-                                        <span class="report-still-in">● Still Inside</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if r.time_out %}
-                                        <span class="duration-badge" data-timein="{{ r.time_in }}" data-timeout="{{ r.time_out }}">—</span>
-                                    {% else %}
-                                        <span class="text-muted" style="font-size:.78rem;">ongoing</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if r.status == 'IN' %}
-                                        <span class="status-in-badge">IN</span>
-                                    {% else %}
-                                        <span class="status-out-badge">Done</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+
+                </div><!-- /tab-content -->
             </div>
         </div>
     </div>
 </div>
 
-<!-- STUDENTS MODAL -->
-<div class="modal fade" id="studentsModal" tabindex="-1">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content" style="border-radius:16px;overflow:hidden;border:none;">
-
-            <div class="modal-header border-0 pb-0" style="background:#5e3a8c;padding:16px 22px;">
-                <div class="d-flex align-items-center gap-3">
-                    <div style="width:34px;height:34px;background:rgba(255,255,255,0.15);border-radius:9px;display:flex;align-items:center;justify-content:center;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
-                        </svg>
-                    </div>
-                    <div>
-                        <h5 class="modal-title mb-0" style="color:white;font-size:14px;">
-                            Students Information
-                            {% if search %}
-                                <span style="font-size:12px;opacity:.7;">— "{{ search }}"</span>
-                            {% endif %}
-                        </h5>
-                        <p class="mb-0" style="color:rgba(255,255,255,0.55);font-size:11px;">Manage registered students</p>
-                    </div>
-                </div>
-                <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+<!-- ADD STUDENT MODAL -->
+<div class="modal fade" id="addStudentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5>Add Student</h5>
+                <button class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-
-            <!-- Top action bar -->
-            <div class="d-flex align-items-center gap-2 flex-wrap" style="padding:14px 22px 0;">
-                <input type="text" id="studentsSearch" placeholder="Search by ID, name, or course…"
-                       class="form-control form-control-sm"
-                       style="max-width:260px;border-radius:8px;border:1px solid #e0d8f0;background:#faf8ff;font-size:13px;">
-                <button class="btn btn-sm" data-bs-toggle="modal" data-bs-target="#addStudentModal"
-                        style="background:#5e3a8c;color:white;border-radius:8px;font-size:12px;font-weight:600;height:32px;padding:0 14px;">
-                    + Add Student
-                </button>
-                <form method="POST" action="/reset_all_sessions" class="d-inline">
-                    <button class="btn btn-sm" onclick="return confirm('Reset all sessions to 30?')"
-                            style="border:1px solid #ddd;border-radius:8px;font-size:12px;color:#666;height:32px;padding:0 14px;background:#fff;">
-                        Reset All Sessions
-                    </button>
+            <div class="modal-body">
+                <form method="POST" action="/register_user">
+                    <input class="form-control mb-2" name="student_id" placeholder="Student ID" pattern="[0-9]+" title="Numbers only" required>
+                    <input class="form-control mb-2" name="last_name" placeholder="Last Name" required>
+                    <input class="form-control mb-2" name="first_name" placeholder="First Name" required>
+                    <input class="form-control mb-2" name="middle_name" placeholder="Middle Name" required>
+                    <select name="course" class="form-control mb-2" required>
+                        <option value="">Course</option>
+                        <option value="BSIT">BSIT</option>
+                        <option value="BSCS">BSCS</option>
+                    </select>
+                    <select name="course_level" class="form-control mb-2" required>
+                        <option value="">Year Level</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                    </select>
+                    <input class="form-control mb-2" name="email" type="email" placeholder="Email" required>
+                    <input class="form-control mb-2" name="address" placeholder="Address" required>
+                    <div class="pw-wrap mb-2">
+                        <input class="form-control" id="add_student_pw" name="password"
+                               type="password" placeholder="Password (min. 8 characters)" minlength="8" required>
+                        <button type="button" class="pw-toggle" onclick="togglePw('add_student_pw', this)">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <button class="btn btn-purple w-100">Add Student</button>
                 </form>
-                {% if search %}
-                <a href="/dashboard" class="btn btn-sm"
-                   style="border:1px solid #ddd;border-radius:8px;font-size:12px;color:#888;height:32px;padding:0 12px;">
-                    ✕ Clear
-                </a>
-                {% endif %}
             </div>
-
-            <div class="modal-body" style="padding:14px 22px 22px;">
-                <div class="table-responsive">
-                    <table id="studentListTable" class="table w-100 align-middle" style="font-size:13px;border-collapse:collapse;">
-                        <thead>
-                            <tr style="background:#f8f5ff;">
-                                <th style="padding:9px 12px;font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #eee;">ID Number</th>
-                                <th style="padding:9px 12px;font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #eee;">Name</th>
-                                <th style="padding:9px 12px;font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #eee;">Year</th>
-                                <th style="padding:9px 12px;font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #eee;">Course</th>
-                                <th style="padding:9px 12px;font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #eee;">Sessions</th>
-                                <th style="padding:9px 12px;font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #eee;">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for s in students %}
-                            {% set initials = s.first_name[0] + s.last_name[0] %}
-                            {% set sess = s.remaining_session if s.remaining_session else 30 %}
-                            <tr class="student-row"
-                                data-search="{{ s.student_id }} {{ s.first_name }} {{ s.last_name }} {{ s.course }}">
-                                <td style="padding:10px 12px;border-bottom:1px solid #f5f5f5;font-family:monospace;font-size:12px;color:#aaa;">{{ s.student_id }}</td>
-                                <td style="padding:10px 12px;border-bottom:1px solid #f5f5f5;">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <div style="width:30px;height:30px;border-radius:50%;background:#ede0ff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#5e3a8c;flex-shrink:0;">
-                                            {{ initials | upper }}
-                                        </div>
-                                        {{ s.first_name }} {{ s.middle_name }} {{ s.last_name }}
-                                    </div>
-                                </td>
-                                <td style="padding:10px 12px;border-bottom:1px solid #f5f5f5;">{{ s.course_level }}</td>
-                                <td style="padding:10px 12px;border-bottom:1px solid #f5f5f5;">
-                                    <span style="background:#f0ecf8;color:#5e3a8c;font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px;">{{ s.course }}</span>
-                                </td>
-                                <td style="padding:10px 12px;border-bottom:1px solid #f5f5f5;">
-                                    <span style="font-weight:700;color:{% if sess <= 5 %}#dc2626{% else %}#5e3a8c{% endif %};">
-                                        {{ sess }}
-                                    </span>
-                                </td>
-                                <td style="padding:10px 12px;border-bottom:1px solid #f5f5f5;">
-                                    <button class="btn btn-sm me-1"
-                                            onclick="openEditModal('{{ s.student_id }}','{{ s.first_name }}','{{ s.last_name }}','{{ s.course }}','{{ s.course_level }}','{{ s.email }}')"
-                                            style="background:#5e3a8c;color:#fff;border:none;padding:4px 12px;border-radius:7px;font-size:11px;font-weight:500;">
-                                        Edit
-                                    </button>
-                                    <form method="POST" action="/delete_student/{{ s.student_id }}" class="d-inline"
-                                          onsubmit="return confirm('Delete this student?')">
-                                        <button class="btn btn-sm"
-                                                style="background:#fff;color:#dc2626;border:1px solid #fca5a5;padding:4px 12px;border-radius:7px;font-size:11px;font-weight:500;">
-                                            Delete
-                                        </button>
-                                    </form>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
         </div>
     </div>
 </div>
@@ -1022,11 +1020,28 @@ function togglePw(inputId, btn) {
 const openSearch = {{ (open_search | default(false)) | tojson }};
 if (openSearch) new bootstrap.Modal(document.getElementById('studentsModal')).show();
 
+// ── Set min available date for PC schedules to today ──
+(function () {
+    const availabilityDate = document.getElementById('availabilityDate');
+    if (availabilityDate) {
+        const today = new Date().toISOString().split('T')[0];
+        availabilityDate.min = today;
+    }
+})();
+
 // ── DataTables ──
 let reportsTable = null;
 let resTable = null;
 let fbTable  = null;
 
+$('#studentsModal').on('shown.bs.modal', function () {
+    if (!$.fn.DataTable.isDataTable('#studentListTable'))
+        $('#studentListTable').DataTable({ pageLength: 10 });
+});
+$('#recordsModal').on('shown.bs.modal', function () {
+    if (!$.fn.DataTable.isDataTable('#sitInRecordTable'))
+        $('#sitInRecordTable').DataTable({ pageLength: 10 });
+});
 $('#sitInReportsModal').on('shown.bs.modal', function () {
     if (!$.fn.DataTable.isDataTable('#sitInReportsTable')) {
         reportsTable = $('#sitInReportsTable').DataTable({
@@ -1045,10 +1060,21 @@ $('#feedbackReportsModal').on('shown.bs.modal', function () {
     }
 });
 $('#reservationsModal').on('shown.bs.modal', function () {
-    if (!$.fn.DataTable.isDataTable('#reservationsTable')) {
-        resTable = $('#reservationsTable').DataTable({
-            pageLength: 15,
-            order: [[7, 'desc']]  // Sort by submitted date desc
+    try {
+        if ($('#reservationsTable').length && !$.fn.DataTable.isDataTable('#reservationsTable')) {
+            resTable = $('#reservationsTable').DataTable({ pageLength: 15, order: [[8,'desc']] });
+        }
+    } catch(e) { console.warn('reservationsTable DataTable:', e); }
+});
+
+// Init resHistoryTable when its tab is shown
+document.addEventListener('DOMContentLoaded', function() {
+    var histTab = document.querySelector('[href="#tabReservationHistory"]');
+    if (histTab) {
+        histTab.addEventListener('shown.bs.tab', function() {
+            if (!$.fn.DataTable.isDataTable('#resHistoryTable')) {
+                $('#resHistoryTable').DataTable({ pageLength: 15, order: [[8,'desc']] });
+            }
         });
     }
 });
@@ -1119,26 +1145,21 @@ document.getElementById('fbLabFilter').addEventListener('change', applyFbFilters
 document.getElementById('fbRatingFilter').addEventListener('change', applyFbFilters);
 
 // ── Reservation filters ──
-function applyResFilters() {
-    if (!resTable) return;
-    const statusVal = document.getElementById('resStatusFilter').value.toUpperCase();
-    const labVal    = document.getElementById('resLabFilter').value.toLowerCase();
-    $.fn.dataTable.ext.search.push(function(settings, data) {
-        if (settings.nTable.id !== 'reservationsTable') return true;
-        if (statusVal && !data[8].toUpperCase().includes(statusVal)) return false;
-        if (labVal    && !data[3].toLowerCase().includes(labVal)) return false;
-        return true;
+function applyResFilters() { /* no-op: filters now in Reservation History tab */ }
+function clearResFilters() { /* no-op: filters now in Reservation History tab */ }
+
+// ── Reservation History tab filter ──
+function filterResHistory() {
+    const statusVal = (document.getElementById('resHistStatusFilter').value || '').toUpperCase();
+    const labVal    = (document.getElementById('resHistLabFilter').value    || '').toUpperCase();
+    document.querySelectorAll('#resHistoryBody tr').forEach(function(row) {
+        const rowStatus = (row.dataset.status || '').toUpperCase();
+        const rowLab    = (row.dataset.lab    || '').toUpperCase();
+        const matchStatus = !statusVal || rowStatus === statusVal;
+        const matchLab    = !labVal    || rowLab    === labVal;
+        row.style.display = (matchStatus && matchLab) ? '' : 'none';
     });
-    resTable.draw();
 }
-function clearResFilters() {
-    document.getElementById('resStatusFilter').value = '';
-    document.getElementById('resLabFilter').value = '';
-    $.fn.dataTable.ext.search = [];
-    if (resTable) resTable.draw();
-}
-document.getElementById('resStatusFilter').addEventListener('change', applyResFilters);
-document.getElementById('resLabFilter').addEventListener('change', applyResFilters);
 
 // ── Bar chart ──
 var chartLabels = {{ purposes | tojson }};
@@ -1167,33 +1188,17 @@ new Chart(document.getElementById('statsChart'), {
 
 // ── Fetch student info for sit-in form ──
 document.getElementById('sitInIdNumber').addEventListener('blur', function () {
-    var id = this.value;
-    fetch('/get_student_info?id=' + id)
-        .then(function(res) { return res.json(); })
-        .then(function(data) {
+    const id = this.value;
+    fetch(`/get_student_info?id=${id}`)
+        .then(res => res.json())
+        .then(data => {
             if (data.success) {
-                var initials = data.name.split(' ').map(function(n){ return n[0]; }).join('').slice(0,2).toUpperCase();
                 document.getElementById('sitInStudentName').value = data.name;
                 document.getElementById('sitInRemainingSession').value = data.remaining_session;
-                document.getElementById('studentAvatar').textContent = initials;
-                document.getElementById('studentCardName').textContent = data.name;
-                document.getElementById('studentCardMeta').textContent = 'Student';
-                document.getElementById('studentSessionPill').textContent = data.remaining_session + ' sessions left';
-                document.getElementById('studentInfoCard').style.display = 'block';
             } else {
-                document.getElementById('studentInfoCard').style.display = 'none';
-                alert('Student not found');
+                alert("Student not found");
             }
         });
-});
-
-// Students live search
-document.getElementById('studentsSearch').addEventListener('input', function() {
-    var q = this.value.toLowerCase();
-    document.querySelectorAll('.student-row').forEach(function(row) {
-        var match = row.getAttribute('data-search').toLowerCase().includes(q);
-        row.style.display = match ? '' : 'none';
-    });
 });
 
 // ── Pre-fill Edit Student modal ──
@@ -1285,54 +1290,6 @@ flashMessages.forEach(function(msg) {
         showConfirmButton: false, timer: 2500,
         toast: true, position: "top-end"
     });
-});
-
-// ── Sit-in Records: search + filter ──
-document.getElementById('recordsSearch').addEventListener('input', function() {
-    applyRecordsFilter();
-});
-
-function filterRecords(item) {
-    var filter = item.getAttribute('data-filter');
-    var label  = item.getAttribute('data-label');
-    var color  = item.getAttribute('data-color');
-    document.getElementById('recordsFilterLabel').textContent = label;
-    document.getElementById('recordsFilterBtn').querySelector('span').style.background = color;
-    document.querySelectorAll('.records-filter-opt').forEach(function(b) {
-        b.style.background = '';
-        b.style.color = '';
-    });
-    item.style.background = '#f0ecf8';
-    item.style.color = '#5e3a8c';
-    applyRecordsFilter();
-}
-
-function applyRecordsFilter() {
-    var search = document.getElementById('recordsSearch').value.toLowerCase();
-    var label  = document.getElementById('recordsFilterLabel').textContent.trim();
-    var status = label === 'Still In' ? 'IN' : label === 'Done' ? 'OUT' : '';
-    var inCount = 0, doneCount = 0;
-    document.querySelectorAll('.record-row').forEach(function(row) {
-        var matchStatus = !status || row.getAttribute('data-status') === status;
-        var matchSearch = !search || row.getAttribute('data-search').toLowerCase().includes(search);
-        row.style.display = (matchStatus && matchSearch) ? '' : 'none';
-        if (row.style.display !== 'none') {
-            if (row.getAttribute('data-status') === 'IN') inCount++;
-            else doneCount++;
-        }
-    });
-    document.getElementById('statCountIn').textContent = inCount;
-    document.getElementById('statCountDone').textContent = doneCount;
-    document.getElementById('statCountTotal').textContent = inCount + doneCount;
-}
-
-document.getElementById('recordsModal').addEventListener('shown.bs.modal', function() {
-    applyRecordsFilter();
-});
-
-// ── Init stats when modal opens ──
-document.getElementById('recordsModal').addEventListener('shown.bs.modal', function() {
-    applyRecordsFilter();
 });
 </script>
 </body>

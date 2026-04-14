@@ -226,6 +226,7 @@
                     <strong>⏳ Pending Reservation</strong><br>
                     <small>
                         Lab <strong>{{ pending_reservation.lab }}</strong> &nbsp;·&nbsp;
+                        PC <strong>{{ pending_reservation.pc_number }}</strong> &nbsp;·&nbsp;
                         {{ pending_reservation.purpose }} &nbsp;·&nbsp;
                         {{ pending_reservation.date }} at {{ pending_reservation.time_slot }}
                     </small><br>
@@ -257,6 +258,7 @@
                         <tr>
                             <th>#</th>
                             <th>Lab</th>
+                            <th>PC</th>
                             <th>Purpose</th>
                             <th>Date</th>
                             <th>Time Slot</th>
@@ -269,6 +271,7 @@
                         <tr>
                             <td class="text-muted">{{ loop.index }}</td>
                             <td><strong>Lab {{ r.lab }}</strong></td>
+                            <td><strong>PC {{ r.pc_number }}</strong></td>
                             <td>{{ r.purpose }}</td>
                             <td>{{ r.date }}</td>
                             <td>{{ r.time_slot }}</td>
@@ -299,6 +302,54 @@
             {% endif %}
         </div>
     </div><!-- /reservation-card -->
+
+
+    <!-- ── LAB RULES & REGULATIONS ── -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center"
+             style="background-color:#5e3a8c; color:white; cursor:pointer;"
+             data-bs-toggle="collapse" data-bs-target="#labRulesBody">
+            <span>&#128203; Laboratory Rules &amp; Regulations</span>
+            <span style="font-size:.85rem; opacity:.85;">Click to expand &#9662;</span>
+        </div>
+        <div class="collapse" id="labRulesBody">
+            <div class="card-body" style="font-size:.93rem; line-height:1.75;">
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <h6 class="fw-bold mb-3" style="color:#198754;">&#9989; Things You MUST DO</h6>
+                        <ul class="list-unstyled">
+                            <li class="mb-2">&#128204; Present your <strong>valid student ID</strong> before entering the laboratory.</li>
+                            <li class="mb-2">&#128204; <strong>Log in and log out</strong> properly using the Sit-In Monitoring System.</li>
+                            <li class="mb-2">&#128204; Use the computer assigned to you based on your <strong>approved reservation</strong>.</li>
+                            <li class="mb-2">&#128204; Keep your workstation <strong>clean and organized</strong> at all times.</li>
+                            <li class="mb-2">&#128204; Use computers for <strong>academic and course-related purposes only</strong>.</li>
+                            <li class="mb-2">&#128204; Report any <strong>technical issues or damaged equipment</strong> to the laboratory-in-charge immediately.</li>
+                            <li class="mb-2">&#128204; Observe <strong>silence and proper decorum</strong> inside the laboratory.</li>
+                            <li class="mb-2">&#128204; <strong>Save your files</strong> to personal storage or cloud — do not rely on local drives.</li>
+                            <li class="mb-2">&#128204; Follow instructions given by the <strong>laboratory staff or faculty-in-charge</strong>.</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="fw-bold mb-3" style="color:#dc3545;">&#128683; Things You MUST NOT DO</h6>
+                        <ul class="list-unstyled">
+                            <li class="mb-2">&#10060; Do <strong>not eat, drink, or bring food</strong> inside the laboratory.</li>
+                            <li class="mb-2">&#10060; Do <strong>not install unauthorized software</strong> or change system settings.</li>
+                            <li class="mb-2">&#10060; Do <strong>not access inappropriate, illegal, or offensive websites</strong> or content.</li>
+                            <li class="mb-2">&#10060; Do <strong>not use another student's account</strong> or share login credentials.</li>
+                            <li class="mb-2">&#10060; Do <strong>not play online games</strong> or use social media for non-academic purposes.</li>
+                            <li class="mb-2">&#10060; Do <strong>not bring or use personal laptops</strong> unless specifically authorized.</li>
+                            <li class="mb-2">&#10060; Do <strong>not tamper with hardware</strong>, cables, or peripherals.</li>
+                            <li class="mb-2">&#10060; Do <strong>not leave your workstation unattended</strong> without logging out properly.</li>
+                            <li class="mb-2">&#10060; Do <strong>not make noise</strong> or disturb other students using the laboratory.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="alert alert-warning mt-3 mb-0 py-2" style="font-size:.85rem;">
+                    &#9888;&#65039; <strong>Violation</strong> of any of these rules may result in the loss of sit-in privileges or disciplinary action in accordance with the University of Cebu Student Handbook.
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- ── RECENT SESSIONS ── -->
     <div class="card recent-sessions-card mb-5">
@@ -393,12 +444,20 @@
 
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Lab <span class="text-danger">*</span></label>
-                        <select name="lab" class="form-control" required>
+                        <select id="reserveLab" name="lab" class="form-control" required>
                             <option value="">Select a lab</option>
                             {% for lab in labs %}
                             <option value="{{ lab.name }}">Lab {{ lab.name }}</option>
                             {% endfor %}
                         </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Available PC <span class="text-danger">*</span></label>
+                        <select id="reservePcNumber" name="pc_number" class="form-control" required disabled>
+                            <option value="">Select lab and date first</option>
+                        </select>
+                        <div id="reservePcNote" class="form-text">If admin has not configured a date, PCs 1–50 are available by default.</div>
                     </div>
 
                     <div class="mb-3">
@@ -420,19 +479,8 @@
 
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Preferred Time Slot <span class="text-danger">*</span></label>
-                        <select name="time_slot" class="form-control" required>
-                            <option value="">Select time</option>
-                            <option>7:00 AM – 8:00 AM</option>
-                            <option>8:00 AM – 9:00 AM</option>
-                            <option>9:00 AM – 10:00 AM</option>
-                            <option>10:00 AM – 11:00 AM</option>
-                            <option>11:00 AM – 12:00 PM</option>
-                            <option>12:00 PM – 1:00 PM</option>
-                            <option>1:00 PM – 2:00 PM</option>
-                            <option>2:00 PM – 3:00 PM</option>
-                            <option>3:00 PM – 4:00 PM</option>
-                            <option>4:00 PM – 5:00 PM</option>
-                        </select>
+                        <input type="text" id="reserveTimeSlot" name="time_slot" class="form-control" 
+                               placeholder="e.g. 9:00 AM - 10:00 AM" required>
                     </div>
 
                     <div class="alert alert-info py-2 mb-0" style="font-size:.82rem;">
@@ -558,6 +606,70 @@ document.addEventListener('DOMContentLoaded', function() {
     const today = new Date().toISOString().split('T')[0];
     const dateInput = document.getElementById('reserveDate');
     if (dateInput) dateInput.min = today;
+
+    const reserveLab = document.getElementById('reserveLab');
+    const reserveDate = document.getElementById('reserveDate');
+    const reserveTimeSlot = document.getElementById('reserveTimeSlot');
+    const reservePcNumber = document.getElementById('reservePcNumber');
+    const reservePcNote = document.getElementById('reservePcNote');
+
+    function updatePcOptions() {
+        if (!reserveLab || !reserveDate || !reserveTimeSlot || !reservePcNumber) {
+            return;
+        }
+
+        const lab = reserveLab.value;
+        const date = reserveDate.value;
+        const timeSlot = reserveTimeSlot.value;
+
+        reservePcNumber.innerHTML = '<option value="">Loading available PCs...</option>';
+        reservePcNumber.disabled = true;
+
+        if (!lab || !date || !timeSlot) {
+            reservePcNumber.innerHTML = '<option value="">Select lab, date, and time slot</option>';
+            reservePcNumber.disabled = true;
+            reservePcNote.textContent = 'Choose a lab, date, and time slot to load available PCs.';
+            return;
+        }
+
+        fetch(`/available_pcs?room=${encodeURIComponent(lab)}&date=${encodeURIComponent(date)}&time_slot=${encodeURIComponent(timeSlot)}`)
+            .then(response => response.json())
+            .then(data => {
+                const pcs = data.pcs || [];
+                if (!pcs.length) {
+                    reservePcNumber.innerHTML = '<option value="">No PCs available for that selection</option>';
+                    reservePcNumber.disabled = true;
+                    reservePcNote.textContent = 'No available PCs are configured for this room/date/time slot.';
+                    return;
+                }
+
+                reservePcNumber.innerHTML = '<option value="">Select a PC</option>';
+                pcs.forEach(pc => {
+                    const option = document.createElement('option');
+                    option.value = pc;
+                    option.textContent = `PC ${pc}`;
+                    reservePcNumber.appendChild(option);
+                });
+                reservePcNumber.disabled = false;
+                reservePcNote.textContent = `Showing ${pcs.length} available PC(s). Admin configuration is applied for this date.`;
+            })
+            .catch(() => {
+                reservePcNumber.innerHTML = '<option value="">Unable to load available PCs</option>';
+                reservePcNumber.disabled = true;
+                reservePcNote.textContent = 'Try again or contact the admin.';
+            });
+    }
+
+    if (reserveLab && reserveDate && reserveTimeSlot) {
+        reserveLab.addEventListener('change', updatePcOptions);
+        reserveDate.addEventListener('change', updatePcOptions);
+        reserveTimeSlot.addEventListener('input', updatePcOptions);
+    }
+
+    const reserveModal = document.getElementById('reserveModal');
+    if (reserveModal) {
+        reserveModal.addEventListener('shown.bs.modal', updatePcOptions);
+    }
 });
 
 // ── Feedback Modal ──
@@ -635,12 +747,35 @@ document.getElementById('editProfileModal').addEventListener('hidden.bs.modal', 
 // ── Flash Messages ──
 var flashMessages = {{ get_flashed_messages(with_categories=true) | tojson }};
 flashMessages.forEach(function(msg) {
-    Swal.fire({
-        icon: msg[0], title: msg[1],
-        showConfirmButton: false, timer: 2800,
-        toast: true, position: "top-end"
-    });
+    const category = msg[0];
+    const text = msg[1];
+    const isReservationNotif = text.includes('APPROVED') || text.includes('DECLINED') ||
+                               text.includes('reservation') || text.includes('Reservation');
+    if (isReservationNotif) {
+        Swal.fire({
+            icon: category === 'success' ? 'success' : 'error',
+            title: category === 'success' ? '&#127881; Reservation Approved!' : '&#10060; Reservation Declined',
+            text: text,
+            confirmButtonColor: category === 'success' ? '#198754' : '#dc3545',
+            confirmButtonText: 'OK',
+        });
+    } else {
+        Swal.fire({
+            icon: category, title: text,
+            showConfirmButton: false, timer: 2800,
+            toast: true, position: "top-end"
+        });
+    }
 });
+
+// Auto-expand Lab Rules on very first visit only
+if (!localStorage.getItem('rulesExpanded')) {
+    var rulesBody = document.getElementById('labRulesBody');
+    if (rulesBody) {
+        new bootstrap.Collapse(rulesBody, { toggle: true });
+        localStorage.setItem('rulesExpanded', '1');
+    }
+}
 </script>
 </body>
 </html>

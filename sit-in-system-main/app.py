@@ -1,23 +1,92 @@
-from flask import Flask, render_template, request, redirect, session, flash, jsonify
+from flask import Flask, render_template, request, redirect, session, flash, jsonify, send_file
 import sqlite3
 import os
 import base64
 import uuid
+import io
+import smtplib
+import threading
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from datetime import datetime
 from werkzeug.utils import secure_filename
-import io
-import csv
-from flask import make_response
-from reportlab.lib.pagesizes import landscape, A4
-from reportlab.lib import colors
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import cm
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, HRFlowable
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
-
+from fpdf import FPDF
 
 app = Flask(__name__)
 app.secret_key = "secretkey"
+
+# =========================
+# EMAIL CONFIG
+# =========================
+MAIL_SENDER     = "kervytabigue69@gmail.com"      # ← change to your Gmail
+MAIL_PASSWORD   = "sloekdoouxlyzyjj"    # ← Gmail App Password (16-char)
+# To get an App Password: Google Account → Security → 2-Step Verification → App Passwords
+
+def send_email_async(to_email, subject, html_body):
+    """Send email in a background thread so it doesn't block the request."""
+    def _send():
+        try:
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = subject
+            msg["From"]    = MAIL_SENDER
+            msg["To"]      = to_email
+            msg.attach(MIMEText(html_body, "html"))
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+                server.login(MAIL_SENDER, MAIL_PASSWORD)
+                server.sendmail(MAIL_SENDER, to_email, msg.as_string())
+        except Exception as e:
+            print(f"[EMAIL ERROR] Failed to send to {to_email}: {e}")
+    threading.Thread(target=_send, daemon=True).start()
+
+def notify_reservation(student_email, student_name, action, res):
+    """Build and send the approval/decline email to the student."""
+    if not student_email:
+        return
+    approved = (action == "accept")
+    color    = "#28a745" if approved else "#dc3545"
+    status   = "APPROVED ✅" if approved else "DECLINED ❌"
+    subject  = f"CCS Sit-in: Your reservation has been {status}"
+    admin_note_html = (
+        f"<p><strong>Admin Note:</strong> {res['admin_note']}</p>"
+        if res.get("admin_note") else ""
+    )
+    html = f"""
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #ddd;border-radius:8px;overflow:hidden;">
+      <div style="background:{color};padding:20px;text-align:center;">
+        <h2 style="color:white;margin:0;">Reservation {status}</h2>
+      </div>
+      <div style="padding:30px;">
+        <p>Hi <strong>{student_name}</strong>,</p>
+        <p>Your sit-in reservation has been <strong style="color:{color};">{status}</strong>.</p>
+        <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+          <tr style="background:#f8f9fa;">
+            <td style="padding:8px 12px;font-weight:bold;width:40%;">Lab</td>
+            <td style="padding:8px 12px;">Lab {res['lab']}</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 12px;font-weight:bold;">PC Number</td>
+            <td style="padding:8px 12px;">PC {res['pc_number']}</td>
+          </tr>
+          <tr style="background:#f8f9fa;">
+            <td style="padding:8px 12px;font-weight:bold;">Date</td>
+            <td style="padding:8px 12px;">{res['date']}</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 12px;font-weight:bold;">Time Slot</td>
+            <td style="padding:8px 12px;">{res['time_slot']}</td>
+          </tr>
+          <tr style="background:#f8f9fa;">
+            <td style="padding:8px 12px;font-weight:bold;">Purpose</td>
+            <td style="padding:8px 12px;">{res['purpose']}</td>
+          </tr>
+        </table>
+        {admin_note_html}
+        {"<p>Please proceed to the lab at your scheduled time. Make sure to bring your student ID.</p>" if approved else "<p>You may submit a new reservation request if needed.</p>"}
+        <p style="margin-top:24px;font-size:13px;color:#888;">— CCS Sit-in Monitoring System, University of Cebu</p>
+      </div>
+    </div>
+    """
+    send_email_async(student_email, subject, html)
 
 # =========================
 # PROFILE PIC CONFIG
@@ -78,6 +147,7 @@ def init_db():
         name TEXT,
         purpose TEXT,
         lab TEXT,
+        pc_number INTEGER,
         session INTEGER DEFAULT 30,
         time_in DATETIME DEFAULT CURRENT_TIMESTAMP,
         time_out DATETIME,
@@ -101,11 +171,24 @@ def init_db():
         name TEXT,
         purpose TEXT,
         lab TEXT,
+        pc_number INTEGER,
         date TEXT,
         time_slot TEXT,
         status TEXT DEFAULT 'PENDING',
         admin_note TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS pc_availability(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        room_number TEXT,
+        date TEXT,
+        time_start TEXT,
+        time_end TEXT,
+        available_pcs TEXT,
+        UNIQUE(room_number, date, time_start, time_end)
     )
     """)
 
@@ -124,9 +207,10 @@ def init_db():
     )
     """)
 
-    rooms = [('524', 30), ('525', 30), ('526', 30), ('527', 30), ('528', 30), ('529', 30), ('530', 30), ('530A', 30), ('530B', 30), ('530C', 30)]
+    rooms = [('524', 50), ('525', 50), ('526', 50), ('527', 50), ('528', 50), ('529', 50), ('530', 50), ('530A', 50), ('530B', 50), ('530C', 50)]
     for r in rooms:
         conn.execute("INSERT OR IGNORE INTO rooms (room_number, capacity) VALUES (?, ?)", r)
+    conn.execute("UPDATE rooms SET capacity=50 WHERE capacity < 50")
 
     admin = conn.execute("SELECT * FROM users WHERE student_id='admin'").fetchone()
     if not admin:
@@ -139,8 +223,13 @@ def init_db():
     migrations = [
         "ALTER TABLE users ADD COLUMN remaining_session INTEGER DEFAULT 30",
         "ALTER TABLE sitin_records ADD COLUMN session INTEGER DEFAULT 30",
+        "ALTER TABLE sitin_records ADD COLUMN pc_number INTEGER",
         "ALTER TABLE users ADD COLUMN profile_pic TEXT",
         "ALTER TABLE reservations ADD COLUMN admin_note TEXT",
+        "ALTER TABLE reservations ADD COLUMN pc_number INTEGER",
+        "ALTER TABLE pc_availability ADD COLUMN time_start TEXT",
+        "ALTER TABLE pc_availability ADD COLUMN time_end TEXT",
+        "ALTER TABLE reservations ADD COLUMN seen_by_student INTEGER DEFAULT 0",
     ]
     for sql in migrations:
         try:
@@ -186,6 +275,95 @@ def save_profile_pic(file=None, base64_data=None, old_pic=None):
             filename = None
 
     return filename
+
+# =========================
+# HELPER: parse and format PC availability selections
+# =========================
+def parse_pc_selection(text):
+    if not text:
+        return []
+
+    pcs = set()
+    for part in text.split(','):
+        part = part.strip()
+        if not part:
+            continue
+        if '-' in part:
+            bounds = part.split('-')
+            if len(bounds) == 2 and bounds[0].strip().isdigit() and bounds[1].strip().isdigit():
+                start = int(bounds[0].strip())
+                end = int(bounds[1].strip())
+                if start <= end:
+                    for n in range(max(1, start), min(50, end) + 1):
+                        pcs.add(n)
+        elif part.isdigit():
+            n = int(part)
+            if 1 <= n <= 50:
+                pcs.add(n)
+
+    return sorted(pcs)
+
+
+def format_pc_selection(pcs):
+    if not pcs:
+        return ""
+    values = sorted({int(x) for x in pcs if str(x).strip().isdigit()})
+    ranges = []
+    start = prev = values[0]
+    for n in values[1:]:
+        if n == prev + 1:
+            prev = n
+        else:
+            ranges.append(str(start) if start == prev else f"{start}-{prev}")
+            start = prev = n
+    ranges.append(str(start) if start == prev else f"{start}-{prev}")
+    return ", ".join(ranges)
+
+
+def get_available_pcs_for_slot(conn, room, date, time_slot):
+    # Find all availability rows for this room+date, then filter by time if time_slot given
+    rows = conn.execute(
+        "SELECT * FROM pc_availability WHERE room_number=? AND date=?",
+        (room, date)
+    ).fetchall()
+
+    # Pick the row whose time window covers the requested time_slot
+    matched_row = None
+    if time_slot and rows:
+        for row in rows:
+            ts = row["time_start"] or ""
+            te = row["time_end"] or ""
+            if ts and te and ts <= time_slot <= te:
+                matched_row = row
+                break
+        if not matched_row:
+            # Fall back to a row with no time restriction
+            for row in rows:
+                if not row["time_start"] and not row["time_end"]:
+                    matched_row = row
+                    break
+    elif rows:
+        # No time_slot requested — use first matching row
+        matched_row = rows[0]
+
+    if matched_row and matched_row["available_pcs"]:
+        available = parse_pc_selection(matched_row["available_pcs"])
+    else:
+        available = list(range(1, 51))
+
+    if time_slot:
+        blocked_rows = conn.execute(
+            """
+            SELECT pc_number FROM reservations
+            WHERE lab=? AND date=? AND time_slot=? AND status IN ('PENDING','APPROVED')
+            """,
+            (room, date, time_slot)
+        ).fetchall()
+        blocked_pcs = {r["pc_number"] for r in blocked_rows if r["pc_number"] is not None}
+        available = [n for n in available if n not in blocked_pcs]
+
+    return available
+
 
 # =========================
 # HELPER: load admin dashboard data
@@ -256,6 +434,10 @@ def get_admin_data(search=None):
         "SELECT ROUND(AVG(rating), 2) FROM feedback"
     ).fetchone()[0] or 0
 
+    pc_availabilities = conn.execute(
+        "SELECT * FROM pc_availability ORDER BY date DESC, room_number"
+    ).fetchall()
+
     conn.close()
 
     return dict(
@@ -273,7 +455,61 @@ def get_admin_data(search=None):
         pending_reservations_count=pending_reservations_count,
         feedback_reports=feedback_reports,
         avg_rating=avg_rating,
+        pc_availabilities=pc_availabilities,
     )
+
+@app.route("/available_pcs")
+def available_pcs():
+    room = request.args.get("room", "").strip()
+    date = request.args.get("date", "").strip()
+    time_slot = request.args.get("time_slot", "").strip()
+
+    if not room or not date:
+        return jsonify({"pcs": []})
+
+    conn = get_db()
+    available = get_available_pcs_for_slot(conn, room, date, time_slot)
+    conn.close()
+    return jsonify({"pcs": available})
+
+
+@app.route("/save_pc_availability", methods=["POST"])
+def save_pc_availability():
+    if not session.get("is_admin"):
+        return redirect("/")
+
+    room = request.form.get("room_number", "").strip()
+    date = request.form.get("availability_date", "").strip()
+    time_start = request.form.get("time_start", "").strip()
+    time_end = request.form.get("time_end", "").strip()
+    available_pcs_text = request.form.get("available_pcs", "").strip()
+
+    if not room or not date:
+        flash("Room and date are required.", "warning")
+        return redirect("/dashboard")
+
+    pcs = parse_pc_selection(available_pcs_text)
+    if not pcs:
+        flash("Enter valid PC numbers between 1 and 50.", "warning")
+        return redirect("/dashboard")
+
+    formatted = format_pc_selection(pcs)
+    conn = get_db()
+    conn.execute(
+        """
+        INSERT INTO pc_availability (room_number, date, time_start, time_end, available_pcs)
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(room_number, date, time_start, time_end) DO UPDATE SET available_pcs=excluded.available_pcs
+        """,
+        (room, date, time_start or None, time_end or None, formatted)
+    )
+    conn.commit()
+    conn.close()
+
+    time_label = f" from {time_start} to {time_end}" if time_start and time_end else ""
+    flash(f"PC availability saved for Lab {room} on {date}{time_label}.", "success")
+    return redirect("/dashboard")
+
 
 # =========================
 # LOGIN
@@ -281,6 +517,10 @@ def get_admin_data(search=None):
 @app.route("/")
 def login():
     return render_template("login.html")
+
+@app.route("/about")
+def about():
+    return render_template("about.html")
 
 @app.route("/login", methods=["POST"])
 def login_user():
@@ -358,6 +598,27 @@ def dashboard():
         WHERE student_id=? AND status='PENDING'
         LIMIT 1
     """, (user["student_id"],)).fetchone()
+
+    # ── In-app notification: detect newly approved/declined reservations ──
+    unseen = conn.execute("""
+        SELECT * FROM reservations
+        WHERE student_id=? AND status IN ('APPROVED','DECLINED') AND seen_by_student=0
+        ORDER BY created_at DESC
+    """, (user["student_id"],)).fetchall()
+
+    for res in unseen:
+        if res["status"] == "APPROVED":
+            flash(f"\u2705 Your reservation for Lab {res['lab']} PC {res['pc_number']} on {res['date']} at {res['time_slot']} has been APPROVED!", "success")
+        else:
+            note = f" Reason: {res['admin_note']}" if res["admin_note"] else ""
+            flash(f"\u274c Your reservation for Lab {res['lab']} PC {res['pc_number']} on {res['date']} has been DECLINED.{note}", "error")
+
+    if unseen:
+        conn.execute("""
+            UPDATE reservations SET seen_by_student=1
+            WHERE student_id=? AND status IN ('APPROVED','DECLINED') AND seen_by_student=0
+        """, (user["student_id"],))
+        conn.commit()
 
     # ── Recent sit-in sessions with has_feedback flag ──
     recent_rows = conn.execute("""
@@ -722,16 +983,43 @@ def reserve_sitin():
         conn.close()
         return redirect("/dashboard")
 
-    lab     = request.form["lab"]
-    purpose = request.form["purpose"]
-    date    = request.form["date"]
-    time_slot = request.form["time_slot"]
-    name    = f"{user['first_name']} {user['last_name']}"
+    lab        = request.form["lab"]
+    pc_number  = request.form.get("pc_number", "").strip()
+    purpose    = request.form["purpose"]
+    date       = request.form["date"]
+    time_slot  = request.form["time_slot"]
+    name       = f"{user['first_name']} {user['last_name']}"
+
+    if not pc_number.isdigit():
+        flash("Please select a valid PC number.", "warning")
+        conn.close()
+        return redirect("/dashboard")
+
+    pc_number = int(pc_number)
+    if pc_number < 1 or pc_number > 50:
+        flash("PC number must be between 1 and 50.", "warning")
+        conn.close()
+        return redirect("/dashboard")
+
+    available = get_available_pcs_for_slot(conn, lab, date, time_slot)
+    if pc_number not in available:
+        flash("That PC is not available for the selected lab/date/time.", "warning")
+        conn.close()
+        return redirect("/dashboard")
+
+    duplicate = conn.execute("""
+        SELECT 1 FROM reservations
+        WHERE lab=? AND date=? AND time_slot=? AND pc_number=? AND status IN ('PENDING','APPROVED')
+    """, (lab, date, time_slot, pc_number)).fetchone()
+    if duplicate:
+        flash("That PC is already reserved for the selected slot.", "warning")
+        conn.close()
+        return redirect("/dashboard")
 
     conn.execute("""
-        INSERT INTO reservations (student_id, name, purpose, lab, date, time_slot)
-        VALUES (?, ?, ?, ?, ?, ?)
-    """, (user["student_id"], name, purpose, lab, date, time_slot))
+        INSERT INTO reservations (student_id, name, purpose, lab, pc_number, date, time_slot)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (user["student_id"], name, purpose, lab, pc_number, date, time_slot))
     conn.commit()
     conn.close()
     flash("Reservation submitted! Please wait for admin approval.", "success")
@@ -792,9 +1080,9 @@ def admin_reservation_action(res_id, action):
             remaining = student["remaining_session"] if student else 30
 
             conn.execute("""
-                INSERT INTO sitin_records (student_id, name, purpose, lab, session)
-                VALUES (?, ?, ?, ?, ?)
-            """, (res["student_id"], res["name"], res["purpose"], res["lab"], remaining))
+                INSERT INTO sitin_records (student_id, name, purpose, lab, pc_number, session)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (res["student_id"], res["name"], res["purpose"], res["lab"], res["pc_number"], remaining))
 
             # Deduct one session
             conn.execute("""
@@ -807,6 +1095,28 @@ def admin_reservation_action(res_id, action):
     """, (new_status, admin_note, res_id))
 
     conn.commit()
+
+    # ── Send email notification to the student ──
+    try:
+        res_row = conn.execute("SELECT * FROM reservations WHERE id=?", (res_id,)).fetchone()
+        if res_row:
+            student = conn.execute(
+                "SELECT email, first_name, last_name FROM users WHERE student_id=?",
+                (res_row["student_id"],)
+            ).fetchone()
+            if student and student["email"]:
+                # Merge admin_note into res dict for the email template
+                res_data = dict(res_row)
+                res_data["admin_note"] = admin_note
+                notify_reservation(
+                    student["email"],
+                    f"{student['first_name']} {student['last_name']}",
+                    action,
+                    res_data
+                )
+    except Exception as e:
+        print(f"[EMAIL NOTIFY ERROR] {e}")
+
     conn.close()
 
     msg = "Reservation approved — sit-in created!" if action == "accept" else "Reservation declined."
@@ -873,9 +1183,6 @@ def submit_feedback():
 def logout():
     session.clear()
     return redirect("/")
-# =========================
-# EXPORT SIT-IN REPORT CSV
-# =========================
 
 @app.route("/export_sitin_report")
 def export_sitin_report():
@@ -883,198 +1190,76 @@ def export_sitin_report():
         return redirect("/")
 
     conn = get_db()
-    records = conn.execute("""
-        SELECT student_id, name, purpose, lab, time_in, time_out, status
-        FROM sitin_records
-        ORDER BY time_in DESC
-    """).fetchall()
+    sitin_records = conn.execute(
+        "SELECT * FROM sitin_records ORDER BY time_in DESC"
+    ).fetchall()
     conn.close()
 
-    buffer = io.BytesIO()
-    doc = SimpleDocTemplate(
-        buffer,
-        pagesize=landscape(A4),
-        rightMargin=1.8*cm, leftMargin=1.8*cm,
-        topMargin=1.8*cm, bottomMargin=1.8*cm
-    )
+    pdf = FPDF(orientation="L", unit="mm", format="A4")
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
 
-    styles = getSampleStyleSheet()
-    PURPLE      = colors.HexColor('#5e3a8c')
-    PURPLE_LIGHT= colors.HexColor('#f0ecf8')
-    PURPLE_MID  = colors.HexColor('#ede0ff')
-    GREEN       = colors.HexColor('#10b981')
-    GRAY_TEXT   = colors.HexColor('#888888')
-    DARK        = colors.HexColor('#1a1a2e')
-    ROW_ALT     = colors.HexColor('#faf8ff')
-    BORDER      = colors.HexColor('#e0d8f0')
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, "University of Cebu Sit-in Report", ln=1, align="C")
+    pdf.set_font("Arial", "", 10)
+    pdf.cell(0, 8, datetime.now().strftime("Generated: %B %d, %Y %I:%M %p"), ln=1, align="C")
+    pdf.ln(4)
 
-    story = []
+    headers = ["#", "Student ID", "Name", "Purpose", "Lab", "Session", "Time In", "Time Out", "Duration", "Status"]
+    col_widths = [12, 28, 48, 30, 24, 20, 38, 38, 28, 24]
+    line_height = 8
 
-    # ── University header ──
-    univ_style = ParagraphStyle('univ', fontName='Helvetica-Bold',
-                                fontSize=13, textColor=PURPLE,
-                                alignment=TA_CENTER, spaceAfter=2)
-    dept_style = ParagraphStyle('dept', fontName='Helvetica',
-                                fontSize=9, textColor=GRAY_TEXT,
-                                alignment=TA_CENTER, spaceAfter=2)
-    title_style = ParagraphStyle('title', fontName='Helvetica-Bold',
-                                 fontSize=18, textColor=DARK,
-                                 alignment=TA_CENTER, spaceAfter=4)
-    meta_style = ParagraphStyle('meta', fontName='Helvetica',
-                                fontSize=8, textColor=GRAY_TEXT,
-                                alignment=TA_CENTER, spaceAfter=0)
+    pdf.set_fill_color(94, 58, 140)
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font("Arial", "B", 9)
+    for idx, header in enumerate(headers):
+        pdf.cell(col_widths[idx], line_height, header, border=1, align="C", fill=True)
+    pdf.ln(line_height)
 
-    story.append(Paragraph("UNIVERSITY OF CEBU", univ_style))
-    story.append(Paragraph("College of Computer Studies", dept_style))
-    story.append(Spacer(1, 0.3*cm))
-    story.append(HRFlowable(width="100%", thickness=2, color=PURPLE, spaceAfter=6))
-    story.append(Paragraph("SIT-IN MONITORING REPORT", title_style))
-    story.append(HRFlowable(width="100%", thickness=0.5, color=BORDER, spaceAfter=4))
-    story.append(Paragraph(
-        f"Generated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}",
-        meta_style
-    ))
-    story.append(Spacer(1, 0.5*cm))
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_font("Arial", "", 8)
 
-    # ── Summary cards ──
-    total    = len(records)
-    still_in = sum(1 for r in records if r["status"] == "IN")
-    done     = total - still_in
+    for index, record in enumerate(sitin_records, start=1):
+        student_id = record[1]
+        name = record[2] or ""
+        purpose = record[3] or ""
+        lab = record[4] or ""
+        session_count = str(record[5]) if record[5] is not None else ""
+        time_in = record[6] or ""
+        time_out = record[7] or ""
+        status = record[8] or ""
 
-    summary_data = [
-        [
-            Paragraph('<b>TOTAL RECORDS</b>', ParagraphStyle('sl', fontName='Helvetica-Bold', fontSize=7, textColor=GRAY_TEXT, alignment=TA_CENTER)),
-            Paragraph('<b>CURRENTLY INSIDE</b>', ParagraphStyle('sl', fontName='Helvetica-Bold', fontSize=7, textColor=GRAY_TEXT, alignment=TA_CENTER)),
-            Paragraph('<b>COMPLETED</b>', ParagraphStyle('sl', fontName='Helvetica-Bold', fontSize=7, textColor=GRAY_TEXT, alignment=TA_CENTER)),
-            Paragraph('<b>REPORT DATE</b>', ParagraphStyle('sl', fontName='Helvetica-Bold', fontSize=7, textColor=GRAY_TEXT, alignment=TA_CENTER)),
-        ],
-        [
-            Paragraph(f'<b>{total}</b>', ParagraphStyle('sv', fontName='Helvetica-Bold', fontSize=20, textColor=PURPLE, alignment=TA_CENTER)),
-            Paragraph(f'<b>{still_in}</b>', ParagraphStyle('sv', fontName='Helvetica-Bold', fontSize=20, textColor=PURPLE, alignment=TA_CENTER)),
-            Paragraph(f'<b>{done}</b>', ParagraphStyle('sv2', fontName='Helvetica-Bold', fontSize=20, textColor=GREEN, alignment=TA_CENTER)),
-            Paragraph(datetime.now().strftime('%b %d, %Y'), ParagraphStyle('sv3', fontName='Helvetica', fontSize=11, textColor=DARK, alignment=TA_CENTER)),
-        ]
-    ]
-
-    page_w = landscape(A4)[0] - 3.6*cm
-    card_w = page_w / 4
-
-    summary_table = Table(summary_data, colWidths=[card_w]*4)
-    summary_table.setStyle(TableStyle([
-        ('BACKGROUND',    (0,0), (-1,-1), PURPLE_LIGHT),
-        ('BACKGROUND',    (0,0), (0,0),   PURPLE_LIGHT),
-        ('ROWBACKGROUNDS',(0,0), (-1,-1), [PURPLE_LIGHT]),
-        ('BOX',           (0,0), (-1,-1), 1, BORDER),
-        ('LINEAFTER',     (0,0), (2,1),   0.5, BORDER),
-        ('TOPPADDING',    (0,0), (-1,-1), 10),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 10),
-        ('ROUNDEDCORNERS',[8]),
-    ]))
-    story.append(summary_table)
-    story.append(Spacer(1, 0.5*cm))
-
-    # ── Main table ──
-    headers = ['#', 'Student ID', 'Name', 'Purpose', 'Lab', 'Date', 'Time In', 'Time Out', 'Duration', 'Status']
-    table_data = [[
-        Paragraph(f'<b>{h}</b>', ParagraphStyle('th', fontName='Helvetica-Bold',
-                  fontSize=8, textColor=colors.white, alignment=TA_CENTER))
-        for h in headers
-    ]]
-
-    for i, r in enumerate(records, 1):
-        time_in  = str(r["time_in"])  if r["time_in"]  else ""
-        time_out = str(r["time_out"]) if r["time_out"] else ""
-        date  = time_in[:10]
-        t_in  = time_in[11:16]  if time_in  else "—"
-        t_out = time_out[11:16] if time_out else "—"
-
-        duration = "ongoing"
+        duration = ""
         if time_in and time_out:
             try:
-                fmt    = "%Y-%m-%d %H:%M:%S"
-                dt_in  = datetime.strptime(time_in[:19],  fmt)
-                dt_out = datetime.strptime(time_out[:19], fmt)
-                mins   = int((dt_out - dt_in).total_seconds() // 60)
-                hrs    = mins // 60
-                duration = f"{hrs}h {mins % 60}m" if hrs > 0 else f"{mins}m"
+                dt_in = datetime.fromisoformat(time_in)
+                dt_out = datetime.fromisoformat(time_out)
+                duration = str(dt_out - dt_in).split(".")[0]
             except Exception:
-                duration = "—"
+                duration = ""
 
-        status_para = Paragraph(
-            '<b>IN</b>' if r["status"] == "IN" else '<b>Done</b>',
-            ParagraphStyle('st', fontName='Helvetica-Bold', fontSize=8,
-                           textColor=PURPLE if r["status"] == "IN" else GREEN,
-                           alignment=TA_CENTER)
-        )
+        row_values = [
+            str(index), student_id, name, purpose, lab,
+            session_count, time_in, time_out, duration, status
+        ]
 
-        row_style = ParagraphStyle('rc', fontName='Helvetica', fontSize=8, textColor=DARK)
-        center_style = ParagraphStyle('rcc', fontName='Helvetica', fontSize=8, textColor=DARK, alignment=TA_CENTER)
+        for idx, value in enumerate(row_values):
+            text = str(value)
+            if len(text) > 30:
+                text = text[:27] + "..."
+            pdf.cell(col_widths[idx], line_height, text, border=1)
+        pdf.ln(line_height)
 
-        table_data.append([
-            Paragraph(str(i),             center_style),
-            Paragraph(r["student_id"],    center_style),
-            Paragraph(r["name"],          row_style),
-            Paragraph(r["purpose"],       row_style),
-            Paragraph(f"Lab {r['lab']}",  center_style),
-            Paragraph(date,               center_style),
-            Paragraph(t_in,               center_style),
-            Paragraph(t_out,              center_style),
-            Paragraph(duration,           center_style),
-            status_para,
-        ])
+    pdf_bytes = bytes(pdf.output(dest='S'))
+    output = io.BytesIO(pdf_bytes)
+    output.seek(0)
 
-    col_widths = [0.8*cm, 2.8*cm, 4.5*cm, 3.2*cm, 2*cm, 2.4*cm, 1.9*cm, 1.9*cm, 2*cm, 1.8*cm]
-
-    main_table = Table(table_data, colWidths=col_widths, repeatRows=1)
-
-    row_bgs = []
-    for idx in range(1, len(table_data)):
-        bg = colors.white if idx % 2 == 0 else ROW_ALT
-        row_bgs.append(('BACKGROUND', (0, idx), (-1, idx), bg))
-
-    main_table.setStyle(TableStyle([
-        # Header
-        ('BACKGROUND',    (0,0), (-1,0), PURPLE),
-        ('TEXTCOLOR',     (0,0), (-1,0), colors.white),
-        ('TOPPADDING',    (0,0), (-1,0), 9),
-        ('BOTTOMPADDING', (0,0), (-1,0), 9),
-        ('LINEBELOW',     (0,0), (-1,0), 2, colors.HexColor('#4a2d6f')),
-        # Body rows
-        ('TOPPADDING',    (0,1), (-1,-1), 7),
-        ('BOTTOMPADDING', (0,1), (-1,-1), 7),
-        ('LEFTPADDING',   (0,0), (-1,-1), 8),
-        ('RIGHTPADDING',  (0,0), (-1,-1), 8),
-        ('ROWBACKGROUNDS',(0,1), (-1,-1), [ROW_ALT, colors.white]),
-        ('GRID',          (0,0), (-1,-1), 0.3, BORDER),
-        ('LINEBELOW',     (0,-1),(-1,-1), 1, BORDER),
-        # Status column highlight
-        ('BACKGROUND',    (9,1), (9,-1), colors.white),
-    ] + row_bgs))
-
-    story.append(main_table)
-    story.append(Spacer(1, 0.6*cm))
-
-    # ── Footer ──
-    footer_style = ParagraphStyle('foot', fontName='Helvetica', fontSize=7.5,
-                                  textColor=GRAY_TEXT, alignment=TA_CENTER)
-    story.append(HRFlowable(width="100%", thickness=0.5, color=BORDER, spaceAfter=6))
-    story.append(Paragraph(
-        f"University of Cebu — College of Computer Studies &nbsp;|&nbsp; "
-        f"Total: <b>{total}</b> records &nbsp;|&nbsp; "
-        f"Inside: <b>{still_in}</b> &nbsp;|&nbsp; "
-        f"Completed: <b>{done}</b> &nbsp;|&nbsp; "
-        f"Printed: {datetime.now().strftime('%B %d, %Y %I:%M %p')}",
-        footer_style
-    ))
-
-    doc.build(story)
-    buffer.seek(0)
-
-    filename = f"UC_CCS_Sitin_Report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-    response = make_response(buffer.read())
-    response.headers["Content-Disposition"] = f"attachment; filename={filename}"
-    response.headers["Content-Type"] = "application/pdf"
-    return response
+    return send_file(
+        output,
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name="university_of_cebu_sit_in_report.pdf"
+    )
 
 # =========================
 # RUN APP
