@@ -110,6 +110,56 @@
             border-left: 4px solid #198754;
             background: #f0fff4;
         }
+
+        /* ── SIDEBAR ── */
+        .sidebar-announcements .card-header {
+            background-color: #5e3a8c;
+            color: white;
+            font-weight: 600;
+            font-size: .9rem;
+        }
+        .sidebar-rules .card-header {
+            background-color: #5e3a8c;
+            color: white;
+            font-weight: 600;
+            font-size: .9rem;
+            cursor: pointer;
+        }
+        .sidebar-rules .card-body {
+            font-size: .82rem;
+            line-height: 1.65;
+            max-height: 420px;
+            overflow-y: auto;
+        }
+        .sidebar-rules ul {
+            padding-left: 1.1rem;
+            margin-bottom: 0;
+        }
+        .sidebar-rules li {
+            margin-bottom: 5px;
+        }
+        .sidebar-announcements .card-body {
+            font-size: .88rem;
+            max-height: 280px;
+            overflow-y: auto;
+        }
+
+        /* Two-column layout */
+        .dashboard-layout {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 24px;
+            align-items: start;
+        }
+
+        @media (max-width: 991px) {
+            .dashboard-layout {
+                grid-template-columns: 1fr;
+            }
+            .dashboard-sidebar {
+                order: -1;
+            }
+        }
     </style>
 </head>
 <body>
@@ -133,7 +183,7 @@
 
 <div class="container mt-4">
 
-    <!-- Profile Info Row -->
+    <!-- Profile Info Row (full width) -->
     <div class="row mb-4">
         <div class="col-md-3">
             <div class="card text-center">
@@ -171,334 +221,251 @@
         </div>
     </div>
 
-    <!-- Announcements from Admin -->
-    {% if announcements %}
-    <div class="card mb-4">
-        <div class="card-header" style="background-color:#5e3a8c; color:white;">📢 Announcements</div>
-        <div class="card-body">
-            {% for ann in announcements %}
-                <p class="mb-1">{{ ann.text }}</p>
-                {% if not loop.last %}<hr class="my-2">{% endif %}
-            {% endfor %}
-        </div>
-    </div>
-    {% endif %}
+    <!-- ── TWO-COLUMN LAYOUT ── -->
+    <div class="dashboard-layout mb-5">
 
-    <!-- Active Sit-in Status -->
-    {% if active_sitin %}
-    <div class="alert alert-success d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h5 class="mb-1">✅ Currently Sitting In</h5>
-            <span>Lab <strong>{{ active_sitin.lab }}</strong> &nbsp;|&nbsp;
-                  Purpose: <strong>{{ active_sitin.purpose }}</strong> &nbsp;|&nbsp;
-                  Time In: <strong>{{ active_sitin.time_in }}</strong>
-            </span>
-        </div>
-        <form method="POST" action="/student_timeout/{{ active_sitin.id }}">
-            <button class="btn btn-danger">Time Out</button>
-        </form>
-    </div>
-    {% else %}
-    <div class="alert alert-info mb-4">
-        <h5 class="mb-0">No Active Sit-in Session</h5>
-    </div>
-    {% endif %}
+        <!-- ══════════════ MAIN COLUMN ══════════════ -->
+        <div class="dashboard-main">
 
-    <!-- ══════════════════════════════════════════
-         RESERVATION SECTION  (replaces Available Labs)
-    ══════════════════════════════════════════ -->
-    <div class="card reservation-card mb-4">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <span>🗓️ Reserve a Sit-In</span>
-            {% if not active_sitin and remaining_session > 0 and not pending_reservation %}
-            <button class="btn btn-sm btn-light fw-semibold"
-                    data-bs-toggle="modal" data-bs-target="#reserveModal">
-                + New Reservation
-            </button>
-            {% endif %}
-<<<<<<< HEAD
-        </div>
-        <div class="card-body">
-
-            <!-- Pending reservation banner -->
-            {% if pending_reservation %}
-            <div class="alert pending-banner d-flex justify-content-between align-items-center mb-3">
+            <!-- Active Sit-in Status -->
+            {% if active_sitin %}
+            <div class="alert alert-success d-flex justify-content-between align-items-center mb-4">
                 <div>
-                    <strong>⏳ Pending Reservation</strong><br>
-                    <small>
-                        Lab <strong>{{ pending_reservation.lab }}</strong> &nbsp;·&nbsp;
-                        PC <strong>{{ pending_reservation.pc_number }}</strong> &nbsp;·&nbsp;
-                        {{ pending_reservation.purpose }} &nbsp;·&nbsp;
-                        {{ pending_reservation.date }} at {{ pending_reservation.time_slot }}
-                    </small><br>
-                    <small class="text-muted">Waiting for admin approval…</small>
+                    <h5 class="mb-1">✅ Currently Sitting In</h5>
+                    <span>Lab <strong>{{ active_sitin.lab }}</strong> &nbsp;|&nbsp;
+                          Purpose: <strong>{{ active_sitin.purpose }}</strong> &nbsp;|&nbsp;
+                          Time In: <strong>{{ active_sitin.time_in }}</strong>
+                    </span>
                 </div>
-                <form method="POST" action="/cancel_reservation/{{ pending_reservation.id }}">
-                    <button class="btn btn-sm btn-outline-danger"
-                            onclick="return confirm('Cancel this reservation?')">Cancel</button>
+                <form method="POST" action="/student_timeout/{{ active_sitin.id }}">
+                    <button class="btn btn-danger">Time Out</button>
                 </form>
             </div>
-            {% endif %}
-
-            <!-- Info if no sessions or already sitting in -->
-            {% if remaining_session <= 0 %}
-            <div class="alert alert-warning mb-3">
-                <strong>No sessions remaining.</strong> You cannot make a reservation.
-            </div>
-            {% elif active_sitin %}
-            <div class="alert alert-secondary mb-3">
-                Time out your current sit-in before making a new reservation.
-            </div>
-            {% endif %}
-
-            <!-- My Reservations table -->
-            {% if my_reservations %}
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0" style="font-size:.88rem;">
-                    <thead class="table-light">
-                        <tr>
-                            <th>#</th>
-                            <th>Lab</th>
-                            <th>PC</th>
-                            <th>Purpose</th>
-                            <th>Date</th>
-                            <th>Time Slot</th>
-                            <th>Status</th>
-                            <th>Admin Note</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for r in my_reservations %}
-                        <tr>
-                            <td class="text-muted">{{ loop.index }}</td>
-                            <td><strong>Lab {{ r.lab }}</strong></td>
-                            <td><strong>PC {{ r.pc_number }}</strong></td>
-                            <td>{{ r.purpose }}</td>
-                            <td>{{ r.date }}</td>
-                            <td>{{ r.time_slot }}</td>
-                            <td>
-                                {% if r.status == 'PENDING' %}
-                                    <span class="badge-pending">⏳ Pending</span>
-                                {% elif r.status == 'APPROVED' %}
-                                    <span class="badge-approved">✅ Approved</span>
-                                {% elif r.status == 'DECLINED' %}
-                                    <span class="badge-declined">❌ Declined</span>
-                                {% else %}
-                                    <span class="badge-cancelled">— Cancelled</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-muted" style="font-size:.8rem;">
-                                {{ r.admin_note if r.admin_note else '—' }}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
             {% else %}
-            <div class="text-center text-muted py-3">
-                <p class="mb-1">No reservations yet.</p>
-                <small>Click <strong>+ New Reservation</strong> to book a lab slot.</small>
+            <div class="alert alert-info mb-4">
+                <h5 class="mb-0">No Active Sit-in Session</h5>
             </div>
             {% endif %}
-        </div>
-    </div><!-- /reservation-card -->
 
+            <!-- ── RESERVATION SECTION ── -->
+            <div class="card reservation-card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>🗓️ Reserve a Sit-In</span>
+                    {% if not active_sitin and remaining_session > 0 and not pending_reservation %}
+                    <button class="btn btn-sm btn-light fw-semibold"
+                            data-bs-toggle="modal" data-bs-target="#reserveModal">
+                        + New Reservation
+                    </button>
+                    {% endif %}
+                </div>
+                <div class="card-body">
 
-    <!-- ── LAB RULES & REGULATIONS ── -->
-    <div class="card mb-4">
-        <div class="card-header d-flex justify-content-between align-items-center"
-             style="background-color:#5e3a8c; color:white; cursor:pointer;"
-             data-bs-toggle="collapse" data-bs-target="#labRulesBody">
-            <span>&#128203; Laboratory Rules &amp; Regulations</span>
-            <span style="font-size:.85rem; opacity:.85;">Click to expand &#9662;</span>
-        </div>
-        <div class="collapse" id="labRulesBody">
-            <div class="card-body" style="font-size:.93rem; line-height:1.75;">
-                <div class="row g-4">
-                    <div class="col-md-6">
-                        <h6 class="fw-bold mb-3" style="color:#198754;">&#9989; Things You MUST DO</h6>
-                        <ul class="list-unstyled">
-                            <li class="mb-2">&#128204; Present your <strong>valid student ID</strong> before entering the laboratory.</li>
-                            <li class="mb-2">&#128204; <strong>Log in and log out</strong> properly using the Sit-In Monitoring System.</li>
-                            <li class="mb-2">&#128204; Use the computer assigned to you based on your <strong>approved reservation</strong>.</li>
-                            <li class="mb-2">&#128204; Keep your workstation <strong>clean and organized</strong> at all times.</li>
-                            <li class="mb-2">&#128204; Use computers for <strong>academic and course-related purposes only</strong>.</li>
-                            <li class="mb-2">&#128204; Report any <strong>technical issues or damaged equipment</strong> to the laboratory-in-charge immediately.</li>
-                            <li class="mb-2">&#128204; Observe <strong>silence and proper decorum</strong> inside the laboratory.</li>
-                            <li class="mb-2">&#128204; <strong>Save your files</strong> to personal storage or cloud — do not rely on local drives.</li>
-                            <li class="mb-2">&#128204; Follow instructions given by the <strong>laboratory staff or faculty-in-charge</strong>.</li>
-                        </ul>
+                    <!-- Pending reservation banner -->
+                    {% if pending_reservation %}
+                    <div class="alert pending-banner d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <strong>⏳ Pending Reservation</strong><br>
+                            <small>
+                                Lab <strong>{{ pending_reservation.lab }}</strong> &nbsp;·&nbsp;
+                                PC <strong>{{ pending_reservation.pc_number }}</strong> &nbsp;·&nbsp;
+                                {{ pending_reservation.purpose }} &nbsp;·&nbsp;
+                                {{ pending_reservation.date }} at {{ pending_reservation.time_slot }}
+                            </small><br>
+                            <small class="text-muted">Waiting for admin approval…</small>
+                        </div>
+                        <form method="POST" action="/cancel_reservation/{{ pending_reservation.id }}">
+                            <button class="btn btn-sm btn-outline-danger"
+                                    onclick="return confirm('Cancel this reservation?')">Cancel</button>
+                        </form>
                     </div>
-                    <div class="col-md-6">
-                        <h6 class="fw-bold mb-3" style="color:#dc3545;">&#128683; Things You MUST NOT DO</h6>
-                        <ul class="list-unstyled">
-                            <li class="mb-2">&#10060; Do <strong>not eat, drink, or bring food</strong> inside the laboratory.</li>
-                            <li class="mb-2">&#10060; Do <strong>not install unauthorized software</strong> or change system settings.</li>
-                            <li class="mb-2">&#10060; Do <strong>not access inappropriate, illegal, or offensive websites</strong> or content.</li>
-                            <li class="mb-2">&#10060; Do <strong>not use another student's account</strong> or share login credentials.</li>
-                            <li class="mb-2">&#10060; Do <strong>not play online games</strong> or use social media for non-academic purposes.</li>
-                            <li class="mb-2">&#10060; Do <strong>not bring or use personal laptops</strong> unless specifically authorized.</li>
-                            <li class="mb-2">&#10060; Do <strong>not tamper with hardware</strong>, cables, or peripherals.</li>
-                            <li class="mb-2">&#10060; Do <strong>not leave your workstation unattended</strong> without logging out properly.</li>
-                            <li class="mb-2">&#10060; Do <strong>not make noise</strong> or disturb other students using the laboratory.</li>
+                    {% endif %}
+
+                    <!-- Info if no sessions or already sitting in -->
+                    {% if remaining_session <= 0 %}
+                    <div class="alert alert-warning mb-3">
+                        <strong>No sessions remaining.</strong> You cannot make a reservation.
+                    </div>
+                    {% elif active_sitin %}
+                    <div class="alert alert-secondary mb-3">
+                        Time out your current sit-in before making a new reservation.
+                    </div>
+                    {% endif %}
+
+                    <!-- My Reservations table -->
+                    {% if my_reservations %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0" style="font-size:.88rem;">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Lab</th>
+                                    <th>PC</th>
+                                    <th>Purpose</th>
+                                    <th>Date</th>
+                                    <th>Time Slot</th>
+                                    <th>Status</th>
+                                    <th>Admin Note</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for r in my_reservations %}
+                                <tr>
+                                    <td class="text-muted">{{ loop.index }}</td>
+                                    <td><strong>Lab {{ r.lab }}</strong></td>
+                                    <td><strong>PC {{ r.pc_number }}</strong></td>
+                                    <td>{{ r.purpose }}</td>
+                                    <td>{{ r.date }}</td>
+                                    <td>{{ r.time_slot }}</td>
+                                    <td>
+                                        {% if r.status == 'PENDING' %}
+                                            <span class="badge-pending">⏳ Pending</span>
+                                        {% elif r.status == 'APPROVED' %}
+                                            <span class="badge-approved">✅ Approved</span>
+                                        {% elif r.status == 'DECLINED' %}
+                                            <span class="badge-declined">❌ Declined</span>
+                                        {% else %}
+                                            <span class="badge-cancelled">— Cancelled</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-muted" style="font-size:.8rem;">
+                                        {{ r.admin_note if r.admin_note else '—' }}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-3">
+                        <p class="mb-1">No reservations yet.</p>
+                        <small>Click <strong>+ New Reservation</strong> to book a lab slot.</small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- ── RECENT SESSIONS ── -->
+            <div class="card recent-sessions-card mb-4">
+                <div class="card-header d-flex align-items-center gap-2">🕒 Recent Sit-In Sessions</div>
+                <div class="card-body p-0">
+                    {% if recent_sessions %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Lab</th>
+                                    <th>Purpose</th>
+                                    <th>Time In</th>
+                                    <th>Time Out</th>
+                                    <th>Status</th>
+                                    <th>Feedback</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for session in recent_sessions %}
+                                <tr>
+                                    <td class="text-muted" style="font-size:.85rem;">{{ loop.index }}</td>
+                                    <td><strong>Lab {{ session.lab }}</strong></td>
+                                    <td>{{ session.purpose }}</td>
+                                    <td style="font-size:.85rem;">{{ session.time_in }}</td>
+                                    <td style="font-size:.85rem;">{{ session.time_out if session.time_out else '—' }}</td>
+                                    <td>
+                                        {% if session.time_out %}
+                                            <span class="session-badge-done">Done</span>
+                                        {% else %}
+                                            <span class="session-badge-active">Active</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if session.time_out %}
+                                            {% if session.has_feedback %}
+                                                <button class="btn-feedback" disabled>✓ Sent</button>
+                                            {% else %}
+                                                <button class="btn-feedback"
+                                                        onclick="openFeedbackModal('{{ session.id }}', 'Lab {{ session.lab }}')">
+                                                    💬 Give Feedback
+                                                </button>
+                                            {% endif %}
+                                        {% else %}
+                                            <button class="btn-feedback" disabled>—</button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        <p class="mb-0">No recent sessions found.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+        </div><!-- /dashboard-main -->
+
+        <!-- ══════════════ SIDEBAR ══════════════ -->
+        <div class="dashboard-sidebar">
+
+            <!-- Announcements -->
+            {% if announcements %}
+            <div class="card sidebar-announcements mb-3">
+                <div class="card-header">📢 Announcements</div>
+                <div class="card-body">
+                    {% for ann in announcements %}
+                        <p class="mb-1" style="font-size:.88rem;">{{ ann.text }}</p>
+                        {% if not loop.last %}<hr class="my-2">{% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Laboratory Rules & Regulations -->
+            <div class="card sidebar-rules">
+                <div class="card-header d-flex justify-content-between align-items-center"
+                     data-bs-toggle="collapse" data-bs-target="#sidebarRulesBody">
+                    <span>📋 Lab Rules &amp; Regulations</span>
+                    <span style="font-size:.8rem; opacity:.85;">▾</span>
+                </div>
+                <div class="collapse show" id="sidebarRulesBody">
+                    <div class="card-body">
+                        <p class="fw-bold mb-2" style="color:#198754; font-size:.82rem;">✅ You MUST</p>
+                        <ul>
+                            <li>Present your valid student ID before entering.</li>
+                            <li>Log in and out using the Sit-In Monitoring System.</li>
+                            <li>Use the assigned PC based on your reservation.</li>
+                            <li>Keep your workstation clean and organized.</li>
+                            <li>Use computers for academic purposes only.</li>
+                            <li>Report technical issues to the lab-in-charge.</li>
+                            <li>Observe silence and proper decorum.</li>
+                            <li>Save files to personal storage or cloud.</li>
+                            <li>Follow instructions from lab staff or faculty.</li>
                         </ul>
+                        <hr class="my-2">
+                        <p class="fw-bold mb-2" style="color:#dc3545; font-size:.82rem;">🚫 You MUST NOT</p>
+                        <ul>
+                            <li>Eat, drink, or bring food inside.</li>
+                            <li>Install unauthorized software or change system settings.</li>
+                            <li>Access inappropriate or illegal websites.</li>
+                            <li>Use another student's account or share credentials.</li>
+                            <li>Play online games or use social media non-academically.</li>
+                            <li>Bring personal laptops unless authorized.</li>
+                            <li>Tamper with hardware, cables, or peripherals.</li>
+                            <li>Leave your workstation unattended without logging out.</li>
+                            <li>Make noise or disturb others in the laboratory.</li>
+                        </ul>
+                        <div class="alert alert-warning py-2 mb-0" style="font-size:.78rem;">
+                            ⚠️ Violations may result in loss of sit-in privileges or disciplinary action per the UC Student Handbook.
+                        </div>
                     </div>
                 </div>
-                <div class="alert alert-warning mt-3 mb-0 py-2" style="font-size:.85rem;">
-                    &#9888;&#65039; <strong>Violation</strong> of any of these rules may result in the loss of sit-in privileges or disciplinary action in accordance with the University of Cebu Student Handbook.
-                </div>
             </div>
-        </div>
-    </div>
-=======
-        </div>
-        <div class="card-body">
 
-            <!-- Pending reservation banner -->
-            {% if pending_reservation %}
-            <div class="alert pending-banner d-flex justify-content-between align-items-center mb-3">
-                <div>
-                    <strong>⏳ Pending Reservation</strong><br>
-                    <small>
-                        Lab <strong>{{ pending_reservation.lab }}</strong> &nbsp;·&nbsp;
-                        PC <strong>{{ pending_reservation.pc_number }}</strong> &nbsp;·&nbsp;
-                        {{ pending_reservation.purpose }} &nbsp;·&nbsp;
-                        {{ pending_reservation.date }} at {{ pending_reservation.time_slot }}
-                    </small><br>
-                    <small class="text-muted">Waiting for admin approval…</small>
-                </div>
-                <form method="POST" action="/cancel_reservation/{{ pending_reservation.id }}">
-                    <button class="btn btn-sm btn-outline-danger"
-                            onclick="return confirm('Cancel this reservation?')">Cancel</button>
-                </form>
-            </div>
-            {% endif %}
+        </div><!-- /dashboard-sidebar -->
 
-            <!-- Info if no sessions or already sitting in -->
-            {% if remaining_session <= 0 %}
-            <div class="alert alert-warning mb-3">
-                <strong>No sessions remaining.</strong> You cannot make a reservation.
-            </div>
-            {% elif active_sitin %}
-            <div class="alert alert-secondary mb-3">
-                Time out your current sit-in before making a new reservation.
-            </div>
-            {% endif %}
-
-            <!-- My Reservations table -->
-            {% if my_reservations %}
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0" style="font-size:.88rem;">
-                    <thead class="table-light">
-                        <tr>
-                            <th>#</th>
-                            <th>Lab</th>
-                            <th>PC</th>
-                            <th>Purpose</th>
-                            <th>Date</th>
-                            <th>Time Slot</th>
-                            <th>Status</th>
-                            <th>Admin Note</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for r in my_reservations %}
-                        <tr>
-                            <td class="text-muted">{{ loop.index }}</td>
-                            <td><strong>Lab {{ r.lab }}</strong></td>
-                            <td><strong>PC {{ r.pc_number }}</strong></td>
-                            <td>{{ r.purpose }}</td>
-                            <td>{{ r.date }}</td>
-                            <td>{{ r.time_slot }}</td>
-                            <td>
-                                {% if r.status == 'PENDING' %}
-                                    <span class="badge-pending">⏳ Pending</span>
-                                {% elif r.status == 'APPROVED' %}
-                                    <span class="badge-approved">✅ Approved</span>
-                                {% elif r.status == 'DECLINED' %}
-                                    <span class="badge-declined">❌ Declined</span>
-                                {% else %}
-                                    <span class="badge-cancelled">— Cancelled</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-muted" style="font-size:.8rem;">
-                                {{ r.admin_note if r.admin_note else '—' }}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <div class="text-center text-muted py-3">
-                <p class="mb-1">No reservations yet.</p>
-                <small>Click <strong>+ New Reservation</strong> to book a lab slot.</small>
-            </div>
-            {% endif %}
-        </div>
-    </div><!-- /reservation-card -->
->>>>>>> 82b8c59c249b365b87f9b0c5f780c8585e79747c
-
-    <!-- ── RECENT SESSIONS ── -->
-    <div class="card recent-sessions-card mb-5">
-        <div class="card-header d-flex align-items-center gap-2">🕒 Recent Sit-In Sessions</div>
-        <div class="card-body p-0">
-            {% if recent_sessions %}
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th>#</th>
-                            <th>Lab</th>
-                            <th>Purpose</th>
-                            <th>Time In</th>
-                            <th>Time Out</th>
-                            <th>Status</th>
-                            <th>Feedback</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for session in recent_sessions %}
-                        <tr>
-                            <td class="text-muted" style="font-size:.85rem;">{{ loop.index }}</td>
-                            <td><strong>Lab {{ session.lab }}</strong></td>
-                            <td>{{ session.purpose }}</td>
-                            <td style="font-size:.85rem;">{{ session.time_in }}</td>
-                            <td style="font-size:.85rem;">{{ session.time_out if session.time_out else '—' }}</td>
-                            <td>
-                                {% if session.time_out %}
-                                    <span class="session-badge-done">Done</span>
-                                {% else %}
-                                    <span class="session-badge-active">Active</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if session.time_out %}
-                                    {% if session.has_feedback %}
-                                        <button class="btn-feedback" disabled>✓ Sent</button>
-                                    {% else %}
-                                        <button class="btn-feedback"
-                                                onclick="openFeedbackModal('{{ session.id }}', 'Lab {{ session.lab }}')">
-                                            💬 Give Feedback
-                                        </button>
-                                    {% endif %}
-                                {% else %}
-                                    <button class="btn-feedback" disabled>—</button>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <div class="text-center text-muted py-4">
-                <p class="mb-0">No recent sessions found.</p>
-            </div>
-            {% endif %}
-        </div>
-    </div>
+    </div><!-- /dashboard-layout -->
 
 </div><!-- /container -->
 
@@ -568,7 +535,7 @@
 
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Preferred Time Slot <span class="text-danger">*</span></label>
-                        <input type="text" id="reserveTimeSlot" name="time_slot" class="form-control" 
+                        <input type="text" id="reserveTimeSlot" name="time_slot" class="form-control"
                                placeholder="e.g. 9:00 AM - 10:00 AM" required>
                     </div>
 
@@ -836,7 +803,6 @@ document.getElementById('editProfileModal').addEventListener('hidden.bs.modal', 
 // ── Flash Messages ──
 var flashMessages = {{ get_flashed_messages(with_categories=true) | tojson }};
 flashMessages.forEach(function(msg) {
-<<<<<<< HEAD
     const category = msg[0];
     const text = msg[1];
     const isReservationNotif = text.includes('APPROVED') || text.includes('DECLINED') ||
@@ -844,7 +810,7 @@ flashMessages.forEach(function(msg) {
     if (isReservationNotif) {
         Swal.fire({
             icon: category === 'success' ? 'success' : 'error',
-            title: category === 'success' ? '&#127881; Reservation Approved!' : '&#10060; Reservation Declined',
+            title: category === 'success' ? '🎉 Reservation Approved!' : '❌ Reservation Declined',
             text: text,
             confirmButtonColor: category === 'success' ? '#198754' : '#dc3545',
             confirmButtonText: 'OK',
@@ -857,23 +823,6 @@ flashMessages.forEach(function(msg) {
         });
     }
 });
-
-// Auto-expand Lab Rules on very first visit only
-if (!localStorage.getItem('rulesExpanded')) {
-    var rulesBody = document.getElementById('labRulesBody');
-    if (rulesBody) {
-        new bootstrap.Collapse(rulesBody, { toggle: true });
-        localStorage.setItem('rulesExpanded', '1');
-    }
-}
-=======
-    Swal.fire({
-        icon: msg[0], title: msg[1],
-        showConfirmButton: false, timer: 2800,
-        toast: true, position: "top-end"
-    });
-});
->>>>>>> 82b8c59c249b365b87f9b0c5f780c8585e79747c
 </script>
 </body>
 </html>

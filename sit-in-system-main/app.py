@@ -225,6 +225,11 @@ def init_db():
         "ALTER TABLE sitin_records ADD COLUMN session INTEGER DEFAULT 30",
         "ALTER TABLE sitin_records ADD COLUMN pc_number INTEGER",
         "ALTER TABLE users ADD COLUMN profile_pic TEXT",
+        "ALTER TABLE reservations ADD COLUMN admin_note TEXT",
+        "ALTER TABLE reservations ADD COLUMN pc_number INTEGER",
+        "ALTER TABLE pc_availability ADD COLUMN time_start TEXT",
+        "ALTER TABLE pc_availability ADD COLUMN time_end TEXT",
+        "ALTER TABLE reservations ADD COLUMN seen_by_student INTEGER DEFAULT 0",
     ]
     for sql in migrations:
         try:
@@ -468,43 +473,9 @@ def available_pcs():
     return jsonify({"pcs": available})
 
 
-@app.route("/save_pc_availability", methods=["POST"])
-def save_pc_availability():
-    if not session.get("is_admin"):
-        return redirect("/")
-
-    room = request.form.get("room_number", "").strip()
-    date = request.form.get("availability_date", "").strip()
-    time_start = request.form.get("time_start", "").strip()
-    time_end = request.form.get("time_end", "").strip()
-    available_pcs_text = request.form.get("available_pcs", "").strip()
-
-    if not room or not date:
-        flash("Room and date are required.", "warning")
-        return redirect("/dashboard")
-
-    pcs = parse_pc_selection(available_pcs_text)
-    if not pcs:
-        flash("Enter valid PC numbers between 1 and 50.", "warning")
-        return redirect("/dashboard")
-
-    formatted = format_pc_selection(pcs)
-    conn = get_db()
-    conn.execute(
-        """
-        INSERT INTO pc_availability (room_number, date, time_start, time_end, available_pcs)
-        VALUES (?, ?, ?, ?, ?)
-        ON CONFLICT(room_number, date, time_start, time_end) DO UPDATE SET available_pcs=excluded.available_pcs
-        """,
-        (room, date, time_start or None, time_end or None, formatted)
-    )
-    conn.commit()
-    conn.close()
-
-    time_label = f" from {time_start} to {time_end}" if time_start and time_end else ""
-    flash(f"PC availability saved for Lab {room} on {date}{time_label}.", "success")
-    return redirect("/dashboard")
-
+@app.route('/pc_availability')
+def pc_availability():
+    return render_template('pc_availability.html')
 
 # =========================
 # LOGIN
@@ -579,6 +550,52 @@ def dashboard():
         "SELECT remaining_session FROM users WHERE id=?", (session["user_id"],)
     ).fetchone()
     remaining_session = student_data["remaining_session"] if student_data else 30
+
+    # ── Student's own reservations ──
+    my_reservations = conn.execute("""
+        SELECT * FROM reservations
+        WHERE student_id=?
+        ORDER BY created_at DESC
+    """, (user["student_id"],)).fetchall()
+
+    # Check if student already has a pending reservation
+    pending_reservation = conn.execute("""
+        SELECT * FROM reservations
+        WHERE student_id=? AND status='PENDING'
+        LIMIT 1
+    """, (user["student_id"],)).fetchone()
+
+    # ── In-app notification: detect newly approved/declined reservations ──
+    unseen = conn.execute("""
+        SELECT * FROM reservations
+        WHERE student_id=? AND status IN ('APPROVED','DECLINED') AND seen_by_student=0
+        ORDER BY created_at DESC
+    """, (user["student_id"],)).fetchall()
+
+    for res in unseen:
+        if res["status"] == "APPROVED":
+            flash(f"\u2705 Your reservation for Lab {res['lab']} PC {res['pc_number']} on {res['date']} at {res['time_slot']} has been APPROVED!", "success")
+        else:
+            note = f" Reason: {res['admin_note']}" if res["admin_note"] else ""
+            flash(f"\u274c Your reservation for Lab {res['lab']} PC {res['pc_number']} on {res['date']} has been DECLINED.{note}", "error")
+
+    if unseen:
+        conn.execute("""
+            UPDATE reservations SET seen_by_student=1
+            WHERE student_id=? AND status IN ('APPROVED','DECLINED') AND seen_by_student=0
+        """, (user["student_id"],))
+        conn.commit()
+
+    # ── Recent sit-in sessions with has_feedback flag ──
+    recent_rows = conn.execute("""
+    SELECT s.*
+    FROM sitin_records s
+    LEFT JOIN feedback f ON f.sitin_id = s.id
+    WHERE s.student_id=? 
+      AND f.id IS NULL   -- ✅ REMOVE sessions that already have feedback
+    ORDER BY s.time_in DESC
+    LIMIT 20
+        """, (user["student_id"],)).fetchall()
 
     conn.close()
 

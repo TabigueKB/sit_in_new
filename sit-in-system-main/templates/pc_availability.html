@@ -1,0 +1,296 @@
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+               <div class="card-header d-flex justify-content-between align-items-center">
+                <span>🖥️ PC Availability Manager</span>
+            </div>
+
+                <div class="card-body">
+                    <form method="POST" action="/save_pc_availability">
+
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label">Lab</label>
+                                <select id="labSelect"  name="room_number" class="form-control custom-select" required>
+                                    <option value="">Select a lab</option>
+                                    {% for room in rooms %}
+                                    <option value="{{ room.room_number }}">Lab {{ room.room_number }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label">Date</label>
+                                <input id="availabilityDate" type="date" name="availability_date" class="form-control" required>
+                            </div>
+
+                            <div class="col-md-2">
+                                <label class="form-label">Time Start</label>
+                                <input type="time" name="time_start" class="form-control">
+                                <small class="text-muted">Optional</small>
+                            </div>
+
+                            <div class="col-md-2">
+                                <label class="form-label">Time End</label>
+                                <input type="time" name="time_end" class="form-control">
+                                <small class="text-muted">Optional</small>
+                            </div>
+
+                            <!-- 🔥 HIDDEN INPUT (AUTO FILLED) -->
+                            <input type="hidden" name="available_pcs" id="availablePCsInput">
+
+                        </div>
+
+                        <!-- 🔥 CLICKABLE PCS -->
+                        <div class="mt-4">
+                        <label class="form-label fw-semibold mb-2">Select Available PCs</label>
+
+                            <div class="d-flex align-items-center mb-2">
+                             <span class="badge bg-light text-success me-2">Available</span>
+                            <span class="badge bg-light text-danger">Not Available</span>
+                        </div>
+
+                        <div id="pcContainer"></div>
+                    </div>
+                        <button type="submit" class="btn btn-purple btn-sm mt-3">
+                         Save Availability
+                        </button>
+                    </form>
+                    <!-- 🔥 TABLE (UNCHANGED) -->
+                    {% if pc_availabilities %}
+                    <div class="table-responsive mt-4">
+                        <table class="table table-sm table-bordered align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Lab</th>
+                                    <th>Date</th>
+                                    <th>Time Window</th>
+                                    <th>Available PCs</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in pc_availabilities %}
+                                <tr>
+                                    <td><strong>Lab {{ item.room_number }}</strong></td>
+                                    <td>{{ item.date }}</td>
+                                    <td>
+                                        {% if item.time_start and item.time_end %}
+                                            {{ item.time_start }} – {{ item.time_end }}
+                                        {% else %}
+                                            <span class="text-muted">All day</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ item.available_pcs }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-muted mt-3">
+                        No PC availability schedules configured yet.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* GENERAL */
+body {
+    background: #f5f7fb;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* CARD */
+.card {
+    border-radius: 16px;
+    border: none;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+    overflow: hidden;
+}
+
+.card-header {
+    background: linear-gradient(135deg, #6f42c1, #8b5cf6);
+    color: white;
+    font-weight: 600;
+    font-size: 1.1rem;
+    padding: 15px 20px;
+}
+
+/* FORM */
+.form-label {
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.form-control {
+    border-radius: 10px;
+    border: 1px solid #e0e0e0;
+    padding: 8px 12px;
+    transition: all 0.2s ease;
+}
+
+.form-control:focus {
+    border-color: #6f42c1;
+    box-shadow: 0 0 0 2px rgba(111, 66, 193, 0.15);
+}
+
+/* BUTTON */
+.btn-purple {
+    background: linear-gradient(135deg, #6f42c1, #8b5cf6);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 8px 18px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn-purple:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 12px rgba(111, 66, 193, 0.3);
+}
+
+/* PC GRID CONTAINER */
+#pcContainer {
+    background: #ffffff;
+    padding: 18px;
+    border-radius: 14px;
+    border: 1px solid #eee;
+    max-height: 260px;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+    gap: 10px;
+}
+
+/* PC BOX */
+.pc-box {
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+/* AVAILABLE */
+.available {
+    background: #ede9fe;
+    color: #6f42c1;
+    border: 1px solid #dcd0ff;
+}
+
+/* NOT AVAILABLE */
+.not-available {
+    background: #ffe4e6;
+    color: #dc3545;
+    border: 1px solid #f5b5b5;
+}
+
+/* HOVER EFFECT */
+.pc-box:hover {
+    transform: scale(1.08);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+/* TABLE */
+.table {
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.table thead {
+    background: #f3f4f6;
+}
+
+.table td, .table th {
+    font-size: 0.85rem;
+    padding: 10px;
+}
+
+/* EMPTY STATE */
+.text-muted {
+    font-size: 0.9rem;
+}
+</style>
+
+<!-- 🔥 SCRIPT -->
+<script>
+let pcs = {};
+const container = document.getElementById("pcContainer");
+const hiddenInput = document.getElementById("availablePCsInput");
+
+// generate PCs (1–50)
+for (let i = 1; i <= 50; i++) {
+    pcs[i] = true;
+
+    const div = document.createElement("div");
+    div.className = "pc-box available";
+    div.innerText = i;
+
+    div.onclick = function () {
+        pcs[i] = !pcs[i];
+
+        if (pcs[i]) {
+            div.classList.add("available");
+            div.classList.remove("not-available");
+        } else {
+            div.classList.add("not-available");
+            div.classList.remove("available");
+        }
+
+        updateInput();
+    };
+
+    container.appendChild(div);
+}
+
+// 🔥 Convert selected PCs to format like "1-7, 10, 15-20"
+function updateInput() {
+    let selected = Object.keys(pcs).filter(i => pcs[i]).map(Number).sort((a,b)=>a-b);
+
+    let ranges = [];
+    let start = null, prev = null;
+
+    selected.forEach(num => {
+        if (start === null) {
+            start = prev = num;
+        } else if (num === prev + 1) {
+            prev = num;
+        } else {
+            ranges.push(start === prev ? start : `${start}-${prev}`);
+            start = prev = num;
+        }
+    });
+
+    if (start !== null) {
+        ranges.push(start === prev ? start : `${start}-${prev}`);
+    }
+
+    hiddenInput.value = ranges.join(", ");
+}
+
+// 🔥 AUTO GENERATE LABS 510–530 (frontend only)
+const labSelect = document.getElementById("labSelect");
+
+// Clear existing options (just in case Jinja rendered something)
+labSelect.innerHTML = '<option value="">Select a lab</option>';
+
+for (let i = 510; i <= 530; i++) {
+    const option = document.createElement("option");
+    option.value = i;
+    option.textContent = "Lab " + i;
+    labSelect.appendChild(option);
+}
+
+// initialize input
+updateInput();
+</script>

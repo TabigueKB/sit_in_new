@@ -153,36 +153,66 @@
 <!-- NAVBAR -->
 <nav class="navbar navbar-expand-lg px-4">
     <span class="navbar-brand">College of Computer Studies Admin</span>
-    <div class="ms-auto d-flex align-items-center">
-        <a class="nav-link me-3" href="/dashboard">Home</a>
-        <a class="nav-link me-3" href="#" data-bs-toggle="modal" data-bs-target="#searchModal">Search</a>
-        <a class="nav-link me-3" href="#" data-bs-toggle="modal" data-bs-target="#studentsModal">Students</a>
-        <a class="nav-link me-3" href="#" data-bs-toggle="modal" data-bs-target="#sitInModal">Sit-in</a>
-        <a class="nav-link me-3" href="#" data-bs-toggle="modal" data-bs-target="#recordsModal">View Sit-in Records</a>
-        <a class="nav-link me-3" href="#" data-bs-toggle="modal" data-bs-target="#sitInReportsModal">Sit-in Reports</a>
-        <a class="nav-link me-3" href="#" data-bs-toggle="modal" data-bs-target="#reservationsModal">
-            Reservations
-            {% if pending_reservations_count > 0 %}
-                <span class="notif-dot">{{ pending_reservations_count }}</span>
-            {% endif %}
-        </a>
-        <a class="nav-link me-3" href="#" data-bs-toggle="modal" data-bs-target="#feedbackReportsModal">Feedback Reports</a>
 
+    <div class="ms-auto d-flex align-items-center">
+
+        <!-- ✅ KEEP ONLY HOME -->
+        <a class="nav-link me-3" href="/dashboard">Home</a>
+
+        <!-- ✅ DROPDOWN (UNCHANGED POSITION, UPDATED CONTENT) -->
         <div class="dropdown ms-2">
             <button class="btn btn-warning btn-sm dropdown-toggle d-flex align-items-center gap-2"
                     type="button" data-bs-toggle="dropdown">
+
                 {% if user.profile_pic %}
                     <img src="{{ url_for('static', filename='uploads/' + user.profile_pic) }}"
                          class="navbar-profile-pic" alt="Profile" style="margin-right:0;">
                 {% else %}
                     <span style="font-size:1rem;">👤</span>
                 {% endif %}
+
                 {{ user.first_name }}
             </button>
+
             <ul class="dropdown-menu dropdown-menu-end">
-                <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#editProfileModal">Edit Profile</a></li>
+
+                <!-- ✅ FIRST -->
+                <li>
+                    <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#editProfileModal">
+                        👤 Edit Profile
+                    </a>
+                </li>
+
                 <li><hr class="dropdown-divider"></li>
+
+                <!-- ✅ MOVED FEATURES HERE -->
+                <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#searchModal">🔍 Search</a></li>
+                <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#studentsModal">👨‍🎓 Students</a></li>
+                <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#sitInModal">💻 Sit-in</a></li>
+                <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#recordsModal">📋 Records</a></li>
+                <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#sitInReportsModal">📊 Reports</a></li>
+
+                <!-- ✅ KEEP NOTIFICATION -->
+                <li>
+                    <a class="dropdown-item d-flex justify-content-between align-items-center"
+                       href="#" data-bs-toggle="modal" data-bs-target="#reservationsModal">
+                        🗓 Reservations
+                        {% if pending_reservations_count > 0 %}
+                            <span class="badge bg-danger">{{ pending_reservations_count }}</span>
+                        {% endif %}
+                    </a>
+                </li>
+
+                <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#feedbackReportsModal">💬 Feedback</a></li>
+
+                <!-- ✅ NEW PAGE -->
+                <li><a class="dropdown-item" href="/pc_availability">🖥 PC Availability</a></li>
+
+                <li><hr class="dropdown-divider"></li>
+
+                <!-- ✅ LAST -->
                 <li><a class="dropdown-item text-danger" href="/logout">Logout</a></li>
+
             </ul>
         </div>
     </div>
@@ -233,103 +263,15 @@
     </div>
 </div>
 
-<div class="container mt-4">
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">🖥️ PC Availability Manager</div>
-                <div class="card-body">
-                    <form method="POST" action="/save_pc_availability">
-                        <div class="row g-3">
-                            <div class="col-md-3">
-                                <label class="form-label">Lab</label>
-                                <select name="room_number" class="form-control" required>
-                                    <option value="">Select a lab</option>
-                                    {% for room in rooms %}
-                                    <option value="{{ room.room_number }}">Lab {{ room.room_number }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label">Date</label>
-                                <input id="availabilityDate" type="date" name="availability_date" class="form-control" required>
-                            </div>
-                            <div class="col-md-2">
-                                <label class="form-label">Time Start</label>
-                                <input type="time" name="time_start" class="form-control" placeholder="e.g. 08:00">
-                                <small class="text-muted">Optional</small>
-                            </div>
-                            <div class="col-md-2">
-                                <label class="form-label">Time End</label>
-                                <input type="time" name="time_end" class="form-control" placeholder="e.g. 12:00">
-                                <small class="text-muted">Optional</small>
-                            </div>
-                            <div class="col-md-2">
-                                <label class="form-label">Available PCs</label>
-                                <input type="text" name="available_pcs" class="form-control" placeholder="e.g. 1-7, 10, 15-20" required>
-                                <small class="text-muted">e.g. 1–50 by default</small>
-                            </div>
-                        </div>
-                        <button class="btn btn-purple btn-sm mt-3">Save Availability</button>
-                    </form>
-
-                    {% if pc_availabilities %}
-                    <div class="table-responsive mt-4">
-                        <table class="table table-sm table-bordered align-middle mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Lab</th>
-                                    <th>Date</th>
-                                    <th>Time Window</th>
-                                    <th>Available PCs</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for item in pc_availabilities %}
-                                <tr>
-                                    <td><strong>Lab {{ item.room_number }}</strong></td>
-                                    <td>{{ item.date }}</td>
-                                    <td>
-                                        {% if item.time_start and item.time_end %}
-                                            {{ item.time_start }} – {{ item.time_end }}
-                                        {% else %}
-                                            <span class="text-muted">All day</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>{{ item.available_pcs }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                    <div class="text-muted mt-3">
-                        No PC availability schedules configured yet. Labs default to PCs 1–50 unless the admin sets a date-specific availability.
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- ══════════════════════════════════════════
-<<<<<<< HEAD
      RESERVATIONS MODAL  (Pending Log only)
-=======
-     RESERVATIONS MODAL
->>>>>>> 82b8c59c249b365b87f9b0c5f780c8585e79747c
 ══════════════════════════════════════════ -->
 <div class="modal fade" id="reservationsModal" tabindex="-1">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header" style="background-color:#5e3a8c; color:white;">
                 <h5 class="modal-title">
-<<<<<<< HEAD
                     🗓️ Reservation Log — Pending Requests
-=======
-                    🗓️ Student Reservations
->>>>>>> 82b8c59c249b365b87f9b0c5f780c8585e79747c
                     {% if pending_reservations_count > 0 %}
                         <span class="badge bg-warning text-dark ms-2">{{ pending_reservations_count }} pending</span>
                     {% endif %}
@@ -337,42 +279,11 @@
                 <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-<<<<<<< HEAD
                 {% if reservations | selectattr('status','equalto','PENDING') | list %}
-=======
-
-                <!-- Filter bar -->
-                <div class="report-filter-bar d-flex flex-wrap gap-2 align-items-end mb-3">
-                    <div>
-                        <label class="form-label mb-1" style="font-size:.82rem; font-weight:600;">Filter by Status</label>
-                        <select id="resStatusFilter" class="form-control form-control-sm" style="width:140px;">
-                            <option value="">All</option>
-                            <option value="PENDING">Pending</option>
-                            <option value="APPROVED">Approved</option>
-                            <option value="DECLINED">Declined</option>
-                            <option value="CANCELLED">Cancelled</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="form-label mb-1" style="font-size:.82rem; font-weight:600;">Filter by Lab</label>
-                        <select id="resLabFilter" class="form-control form-control-sm" style="width:130px;">
-                            <option value="">All Labs</option>
-                            {% for room in rooms %}
-                            <option>{{ room.room_number }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="ms-auto">
-                        <button class="btn btn-sm btn-outline-secondary" onclick="clearResFilters()">Clear Filters</button>
-                    </div>
-                </div>
-
->>>>>>> 82b8c59c249b365b87f9b0c5f780c8585e79747c
                 <div class="table-responsive">
                     <table id="reservationsTable" class="table table-bordered table-hover w-100 align-middle" style="font-size:.87rem;">
                         <thead class="table-dark">
                             <tr>
-<<<<<<< HEAD
                                 <th>#</th><th>Student ID</th><th>Name</th><th>Lab</th>
                                 <th>PC</th><th>Purpose</th><th>Date</th><th>Time Slot</th>
                                 <th>Submitted</th><th style="min-width:200px;">Actions</th>
@@ -380,24 +291,6 @@
                         </thead>
                         <tbody>
                             {% for r in reservations if r.status == 'PENDING' %}
-=======
-                                <th>#</th>
-                                <th>Student ID</th>
-                                <th>Name</th>
-                                <th>Lab</th>
-                                <th>PC</th>
-                                <th>Purpose</th>
-                                <th>Date</th>
-                                <th>Time Slot</th>
-                                <th>Submitted</th>
-                                <th>Status</th>
-                                <th>Admin Note</th>
-                                <th style="min-width:200px;">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for r in reservations %}
->>>>>>> 82b8c59c249b365b87f9b0c5f780c8585e79747c
                             <tr>
                                 <td class="text-muted">{{ loop.index }}</td>
                                 <td>{{ r.student_id }}</td>
@@ -407,7 +300,6 @@
                                 <td>{{ r.purpose }}</td>
                                 <td>{{ r.date }}</td>
                                 <td style="font-size:.8rem;">{{ r.time_slot }}</td>
-<<<<<<< HEAD
                                 <td style="font-size:.78rem;color:#666;">{{ (r.created_at | string)[:16] }}</td>
                                 <td>
                                     <div class="action-row">
@@ -421,51 +313,12 @@
                                             ❌ Decline
                                         </button>
                                     </div>
-=======
-                                <td style="font-size:.78rem; color:#666;">
-                                    {{ (r.created_at | string)[:16] }}
-                                </td>
-                                <td>
-                                    {% if r.status == 'PENDING' %}
-                                        <span class="res-pending">⏳ Pending</span>
-                                    {% elif r.status == 'APPROVED' %}
-                                        <span class="res-approved">✅ Approved</span>
-                                    {% elif r.status == 'DECLINED' %}
-                                        <span class="res-declined">❌ Declined</span>
-                                    {% else %}
-                                        <span class="res-cancelled">— Cancelled</span>
-                                    {% endif %}
-                                </td>
-                                <td style="font-size:.78rem; color:#555; max-width:140px;">
-                                    {{ r.admin_note if r.admin_note else '—' }}
-                                </td>
-                                <td>
-                                    {% if r.status == 'PENDING' %}
-                                    <div class="action-row">
-                                        <!-- Accept -->
-                                        <form method="POST"
-                                              action="/admin_reservation_action/{{ r.id }}/accept"
-                                              onsubmit="return confirmAction(this, 'approve')">
-                                            <input type="hidden" name="admin_note" value="">
-                                            <button class="btn btn-success btn-sm">✅ Accept</button>
-                                        </form>
-                                        <!-- Decline (opens mini note popup) -->
-                                        <button class="btn btn-danger btn-sm"
-                                                onclick="openDeclineModal({{ r.id }}, '{{ r.name }}')">
-                                            ❌ Decline
-                                        </button>
-                                    </div>
-                                    {% else %}
-                                        <span class="text-muted" style="font-size:.78rem;">No action needed</span>
-                                    {% endif %}
->>>>>>> 82b8c59c249b365b87f9b0c5f780c8585e79747c
                                 </td>
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
-<<<<<<< HEAD
                 {% else %}
                 <div class="text-center text-muted py-5">
                     <div style="font-size:3rem;">🎉</div>
@@ -473,8 +326,6 @@
                     <p class="mb-0">All reservation requests have been handled.</p>
                 </div>
                 {% endif %}
-=======
->>>>>>> 82b8c59c249b365b87f9b0c5f780c8585e79747c
             </div>
         </div>
     </div>
@@ -806,7 +657,6 @@
                 <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-<<<<<<< HEAD
 
                 <!-- Tabs -->
                 <ul class="nav nav-tabs mb-3" id="reportTabs">
@@ -959,87 +809,6 @@
                     </div>
 
                 </div><!-- /tab-content -->
-=======
-                <div class="report-filter-bar d-flex flex-wrap gap-2 align-items-end">
-                    <div>
-                        <label class="form-label mb-1" style="font-size:.82rem; font-weight:600;">Filter by Date</label>
-                        <input type="date" id="reportDateFilter" class="form-control form-control-sm" style="width:160px;">
-                    </div>
-                    <div>
-                        <label class="form-label mb-1" style="font-size:.82rem; font-weight:600;">Filter by Lab</label>
-                        <select id="reportLabFilter" class="form-control form-control-sm" style="width:130px;">
-                            <option value="">All Labs</option>
-                            {% for room in rooms %}
-                            <option>{{ room.room_number }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div>
-                        <label class="form-label mb-1" style="font-size:.82rem; font-weight:600;">Filter by Status</label>
-                        <select id="reportStatusFilter" class="form-control form-control-sm" style="width:120px;">
-                            <option value="">All</option>
-                            <option value="IN">Still In</option>
-                            <option value="OUT">Completed</option>
-                        </select>
-                    </div>
-                    <div class="ms-auto d-flex gap-2">
-                        <button class="btn btn-sm btn-outline-secondary" onclick="clearReportFilters()">Clear Filters</button>
-                        <a href="/export_sitin_report" class="btn btn-sm btn-purple">⬇ Export PDF</a>
-                    </div>
-                </div>
-                <div class="table-responsive">
-                    <table id="sitInReportsTable" class="table table-bordered table-hover w-100 align-middle">
-                        <thead class="table-dark">
-                            <tr>
-                                <th>#</th>
-                                <th>Student ID</th>
-                                <th>Name</th>
-                                <th>Purpose</th>
-                                <th>Lab</th>
-                                <th>Date</th>
-                                <th>Time In</th>
-                                <th>Time Out</th>
-                                <th>Duration</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for r in sitin_records %}
-                            <tr>
-                                <td class="text-muted" style="font-size:.82rem;">{{ loop.index }}</td>
-                                <td>{{ r.student_id }}</td>
-                                <td>{{ r.name }}</td>
-                                <td>{{ r.purpose }}</td>
-                                <td><strong>Lab {{ r.lab }}</strong></td>
-                                <td><span class="report-date">{{ (r.time_in | string)[:10] }}</span></td>
-                                <td><span class="report-time-in">🟢 {{ (r.time_in | string)[11:16] }}</span></td>
-                                <td>
-                                    {% if r.time_out %}
-                                        <span class="report-time-out">🔴 {{ (r.time_out | string)[11:16] }}</span>
-                                    {% else %}
-                                        <span class="report-still-in">● Still Inside</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if r.time_out %}
-                                        <span class="duration-badge" data-timein="{{ r.time_in }}" data-timeout="{{ r.time_out }}">—</span>
-                                    {% else %}
-                                        <span class="text-muted" style="font-size:.78rem;">ongoing</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if r.status == 'IN' %}
-                                        <span class="status-in-badge">IN</span>
-                                    {% else %}
-                                        <span class="status-out-badge">Done</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
->>>>>>> 82b8c59c249b365b87f9b0c5f780c8585e79747c
             </div>
         </div>
     </div>
@@ -1241,7 +1010,6 @@ $('#feedbackReportsModal').on('shown.bs.modal', function () {
     }
 });
 $('#reservationsModal').on('shown.bs.modal', function () {
-<<<<<<< HEAD
     try {
         if ($('#reservationsTable').length && !$.fn.DataTable.isDataTable('#reservationsTable')) {
             resTable = $('#reservationsTable').DataTable({ pageLength: 15, order: [[8,'desc']] });
@@ -1261,16 +1029,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-=======
-    if (!$.fn.DataTable.isDataTable('#reservationsTable')) {
-        resTable = $('#reservationsTable').DataTable({
-            pageLength: 15,
-            order: [[7, 'desc']]  // Sort by submitted date desc
-        });
-    }
-});
-
->>>>>>> 82b8c59c249b365b87f9b0c5f780c8585e79747c
 // ── Compute durations client-side ──
 function computeDurations() {
     document.querySelectorAll('.duration-badge[data-timein]').forEach(function(el) {
@@ -1337,7 +1095,6 @@ document.getElementById('fbLabFilter').addEventListener('change', applyFbFilters
 document.getElementById('fbRatingFilter').addEventListener('change', applyFbFilters);
 
 // ── Reservation filters ──
-<<<<<<< HEAD
 function applyResFilters() { /* no-op: filters now in Reservation History tab */ }
 function clearResFilters() { /* no-op: filters now in Reservation History tab */ }
 
@@ -1353,28 +1110,6 @@ function filterResHistory() {
         row.style.display = (matchStatus && matchLab) ? '' : 'none';
     });
 }
-=======
-function applyResFilters() {
-    if (!resTable) return;
-    const statusVal = document.getElementById('resStatusFilter').value.toUpperCase();
-    const labVal    = document.getElementById('resLabFilter').value.toLowerCase();
-    $.fn.dataTable.ext.search.push(function(settings, data) {
-        if (settings.nTable.id !== 'reservationsTable') return true;
-        if (statusVal && !data[8].toUpperCase().includes(statusVal)) return false;
-        if (labVal    && !data[3].toLowerCase().includes(labVal)) return false;
-        return true;
-    });
-    resTable.draw();
-}
-function clearResFilters() {
-    document.getElementById('resStatusFilter').value = '';
-    document.getElementById('resLabFilter').value = '';
-    $.fn.dataTable.ext.search = [];
-    if (resTable) resTable.draw();
-}
-document.getElementById('resStatusFilter').addEventListener('change', applyResFilters);
-document.getElementById('resLabFilter').addEventListener('change', applyResFilters);
->>>>>>> 82b8c59c249b365b87f9b0c5f780c8585e79747c
 
 // ── Bar chart ──
 var chartLabels = {{ purposes | tojson }};
