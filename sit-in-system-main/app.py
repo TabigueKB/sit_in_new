@@ -18,12 +18,10 @@ app.secret_key = "secretkey"
 # =========================
 # EMAIL CONFIG
 # =========================
-MAIL_SENDER     = "kervytabigue69@gmail.com"      # ← change to your Gmail
-MAIL_PASSWORD   = "sloekdoouxlyzyjj"    # ← Gmail App Password (16-char)
-# To get an App Password: Google Account → Security → 2-Step Verification → App Passwords
+MAIL_SENDER  = "kervytabigue69@gmail.com"
+MAIL_PASSWORD = "sloekdoouxlyzyjj"
 
 def send_email_async(to_email, subject, html_body):
-    """Send email in a background thread so it doesn't block the request."""
     def _send():
         try:
             msg = MIMEMultipart("alternative")
@@ -39,7 +37,6 @@ def send_email_async(to_email, subject, html_body):
     threading.Thread(target=_send, daemon=True).start()
 
 def notify_reservation(student_email, student_name, action, res):
-    """Build and send the approval/decline email to the student."""
     if not student_email:
         return
     approved = (action == "accept")
@@ -163,7 +160,6 @@ def init_db():
     )
     """)
 
-    # ── NEW: Reservations table ──
     conn.execute("""
     CREATE TABLE IF NOT EXISTS reservations(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -192,7 +188,6 @@ def init_db():
     )
     """)
 
-    # ── NEW: Feedback table ──
     conn.execute("""
     CREATE TABLE IF NOT EXISTS feedback(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -207,7 +202,10 @@ def init_db():
     )
     """)
 
-    rooms = [('524', 50), ('525', 50), ('526', 50), ('527', 50), ('528', 50), ('529', 50), ('530', 50), ('530A', 50), ('530B', 50), ('530C', 50)]
+    rooms = [
+        ('524', 50), ('525', 50), ('526', 50), ('527', 50), ('528', 50),
+        ('529', 50), ('530', 50), ('530A', 50), ('530B', 50), ('530C', 50)
+    ]
     for r in rooms:
         conn.execute("INSERT OR IGNORE INTO rooms (room_number, capacity) VALUES (?, ?)", r)
     conn.execute("UPDATE rooms SET capacity=50 WHERE capacity < 50")
@@ -219,7 +217,6 @@ def init_db():
         VALUES ('admin','Admin','User','admin123',1)
         """)
 
-    # MIGRATIONS — safely add columns that may not exist in older databases
     migrations = [
         "ALTER TABLE users ADD COLUMN remaining_session INTEGER DEFAULT 30",
         "ALTER TABLE sitin_records ADD COLUMN session INTEGER DEFAULT 30",
@@ -235,7 +232,7 @@ def init_db():
         try:
             conn.execute(sql)
         except Exception:
-            pass  # column already exists, skip
+            pass
 
     conn.commit()
     conn.close()
@@ -280,9 +277,9 @@ def save_profile_pic(file=None, base64_data=None, old_pic=None):
 # HELPER: parse and format PC availability selections
 # =========================
 def parse_pc_selection(text):
+    """Convert a string like '1-7, 10, 15-20' into a sorted list of ints."""
     if not text:
         return []
-
     pcs = set()
     for part in text.split(','):
         part = part.strip()
@@ -292,7 +289,7 @@ def parse_pc_selection(text):
             bounds = part.split('-')
             if len(bounds) == 2 and bounds[0].strip().isdigit() and bounds[1].strip().isdigit():
                 start = int(bounds[0].strip())
-                end = int(bounds[1].strip())
+                end   = int(bounds[1].strip())
                 if start <= end:
                     for n in range(max(1, start), min(50, end) + 1):
                         pcs.add(n)
@@ -300,7 +297,6 @@ def parse_pc_selection(text):
             n = int(part)
             if 1 <= n <= 50:
                 pcs.add(n)
-
     return sorted(pcs)
 
 
@@ -320,37 +316,108 @@ def format_pc_selection(pcs):
     return ", ".join(ranges)
 
 
+def normalize_time(t):
+    """
+    Normalise a time string to 24-h 'HH:MM' so we can compare
+    time_start / time_end (stored as 'HH:MM') with the student's
+    time_slot (stored as e.g. '9:00 AM - 10:00 AM').
+
+    Accepts:
+      '09:00'            → '09:00'
+      '9:00'             → '09:00'
+      '9:00 AM'          → '09:00'
+      '1:00 PM'          → '13:00'
+      '12:00 PM'         → '12:00'
+      '12:00 AM'         → '00:00'
+    """
+    if not t:
+        return ""
+    t = t.strip()
+    try:
+        # Try 24-h first ("HH:MM" or "H:MM")
+        if "AM" not in t.upper() and "PM" not in t.upper():
+            h, m = t.split(":")
+            return f"{int(h):02d}:{int(m):02d}"
+        # 12-h with AM/PM
+        upper = t.upper()
+        pm = "PM" in upper
+        time_part = upper.replace("AM", "").replace("PM", "").strip()
+        h, m = time_part.split(":")
+        h = int(h); m = int(m)
+        if pm and h != 12:
+            h += 12
+        if not pm and h == 12:
+            h = 0
+        return f"{h:02d}:{m:02d}"
+    except Exception:
+        return t  # return as-is if we can't parse
+
+
+def slot_overlaps_window(time_slot, time_start, time_end):
+    """
+    Return True when the student's requested time_slot overlaps with
+    the admin-configured [time_start, time_end] window.
+
+    time_slot  : e.g. "9:00 AM - 10:00 AM"  OR just "09:00"
+    time_start : e.g. "08:30"
+    time_end   : e.g. "09:30"
+    """
+    if not time_start or not time_end:
+        # No restriction — always matches
+        return True
+
+    ts_norm = normalize_time(time_start)
+    te_norm = normalize_time(time_end)
+
+    # If the slot looks like "HH:MM AM - HH:MM PM" split it
+    if " - " in time_slot:
+        parts = time_slot.split(" - ", 1)
+        slot_start = normalize_time(parts[0].strip())
+        slot_end   = normalize_time(parts[1].strip())
+    else:
+        slot_start = slot_end = normalize_time(time_slot.strip())
+
+    if not slot_start or not slot_end:
+        return False
+
+    # Overlap when slot_start < window_end AND slot_end > window_start
+    return slot_start < te_norm and slot_end > ts_norm
+
+
 def get_available_pcs_for_slot(conn, room, date, time_slot):
-    # Find all availability rows for this room+date, then filter by time if time_slot given
+    """
+    Return the list of PC numbers available for a given room/date/time_slot.
+    Applies admin-configured availability first, then removes already-booked PCs.
+    """
     rows = conn.execute(
         "SELECT * FROM pc_availability WHERE room_number=? AND date=?",
         (room, date)
     ).fetchall()
 
-    # Pick the row whose time window covers the requested time_slot
     matched_row = None
+
     if time_slot and rows:
+        # Find the row whose time window overlaps the requested slot
         for row in rows:
-            ts = row["time_start"] or ""
-            te = row["time_end"] or ""
-            if ts and te and ts <= time_slot <= te:
+            if slot_overlaps_window(time_slot, row["time_start"], row["time_end"]):
                 matched_row = row
                 break
         if not matched_row:
-            # Fall back to a row with no time restriction
+            # Fall back to an all-day row (no time restriction)
             for row in rows:
                 if not row["time_start"] and not row["time_end"]:
                     matched_row = row
                     break
     elif rows:
-        # No time_slot requested — use first matching row
         matched_row = rows[0]
 
     if matched_row and matched_row["available_pcs"]:
         available = parse_pc_selection(matched_row["available_pcs"])
     else:
+        # No config for this date → all 50 PCs available
         available = list(range(1, 51))
 
+    # Remove PCs already reserved for this slot
     if time_slot:
         blocked_rows = conn.execute(
             """
@@ -413,7 +480,6 @@ def get_admin_data(search=None):
     purposes = ["C Programming", "Java", "C#", "PHP"]
     purpose_counts = [purpose_map.get(p, 0) for p in purposes]
 
-    # ── Reservations ──
     reservations = conn.execute("""
         SELECT * FROM reservations ORDER BY created_at DESC
     """).fetchall()
@@ -422,7 +488,6 @@ def get_admin_data(search=None):
         "SELECT COUNT(*) FROM reservations WHERE status='PENDING'"
     ).fetchone()[0]
 
-    # ── Feedback reports ──
     feedback_reports = conn.execute("""
         SELECT f.*, s.time_in, s.time_out
         FROM feedback f
@@ -458,24 +523,125 @@ def get_admin_data(search=None):
         pc_availabilities=pc_availabilities,
     )
 
+# =========================
+# API: Available PCs for a slot
+# =========================
 @app.route("/available_pcs")
 def available_pcs():
-    room = request.args.get("room", "").strip()
-    date = request.args.get("date", "").strip()
+    room      = request.args.get("room", "").strip()
+    date      = request.args.get("date", "").strip()
     time_slot = request.args.get("time_slot", "").strip()
 
     if not room or not date:
-        return jsonify({"pcs": []})
+        return jsonify({"pcs": [], "configured": False})
 
     conn = get_db()
+    # Check if admin has configured anything for this room+date
+    config_exists = conn.execute(
+        "SELECT 1 FROM pc_availability WHERE room_number=? AND date=?", (room, date)
+    ).fetchone()
     available = get_available_pcs_for_slot(conn, room, date, time_slot)
     conn.close()
-    return jsonify({"pcs": available})
+    return jsonify({"pcs": available, "configured": config_exists is not None})
 
 
+# =========================
+# API: All time slots configured for a room+date
+# (used by student reservation form to show dropdown)
+# =========================
+@app.route("/available_slots")
+def available_slots():
+    room = request.args.get("room", "").strip()
+    date = request.args.get("date", "").strip()
+
+    if not room or not date:
+        return jsonify({"slots": []})
+
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT time_start, time_end FROM pc_availability WHERE room_number=? AND date=? ORDER BY time_start",
+        (room, date)
+    ).fetchall()
+    conn.close()
+
+    slots = []
+    for row in rows:
+        if row["time_start"] and row["time_end"]:
+            slots.append(f"{row['time_start']} - {row['time_end']}")
+    return jsonify({"slots": slots})
+
+
+# =========================
+# PC AVAILABILITY PAGE (admin)
+# =========================
 @app.route('/pc_availability')
 def pc_availability():
-    return render_template('pc_availability.html')
+    if not session.get("is_admin"):
+        return redirect("/")
+    conn = get_db()
+    rooms = conn.execute("SELECT * FROM rooms ORDER BY room_number").fetchall()
+    pc_availabilities = conn.execute(
+        "SELECT * FROM pc_availability ORDER BY date DESC, room_number"
+    ).fetchall()
+    conn.close()
+    return render_template('pc_availability.html', rooms=rooms, pc_availabilities=pc_availabilities)
+
+
+@app.route('/save_pc_availability', methods=["POST"])
+def save_pc_availability():
+    """Admin saves a PC availability schedule for a lab/date/time window."""
+    if not session.get("is_admin"):
+        return redirect("/")
+
+    room_number       = request.form.get("room_number", "").strip()
+    availability_date = request.form.get("availability_date", "").strip()
+    time_start        = request.form.get("time_start", "").strip() or None
+    time_end          = request.form.get("time_end", "").strip() or None
+    available_pcs_raw = request.form.get("available_pcs", "").strip()
+
+    if not room_number or not availability_date:
+        flash("Lab and date are required.", "warning")
+        return redirect("/pc_availability")
+
+    # Validate time window
+    if (time_start and not time_end) or (time_end and not time_start):
+        flash("Please provide both Time Start and Time End, or leave both blank.", "warning")
+        return redirect("/pc_availability")
+
+    if not available_pcs_raw:
+        flash("Please select at least one available PC.", "warning")
+        return redirect("/pc_availability")
+
+    conn = get_db()
+    try:
+        conn.execute("""
+            INSERT INTO pc_availability (room_number, date, time_start, time_end, available_pcs)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(room_number, date, time_start, time_end)
+            DO UPDATE SET available_pcs=excluded.available_pcs
+        """, (room_number, availability_date, time_start, time_end, available_pcs_raw))
+        conn.commit()
+        flash(f"PC availability saved for Lab {room_number} on {availability_date}!", "success")
+    except Exception as e:
+        flash(f"Error saving availability: {e}", "error")
+    finally:
+        conn.close()
+
+    return redirect("/pc_availability")
+
+
+@app.route('/delete_pc_availability/<int:avail_id>', methods=["POST"])
+def delete_pc_availability(avail_id):
+    """Admin deletes a PC availability schedule."""
+    if not session.get("is_admin"):
+        return redirect("/")
+    conn = get_db()
+    conn.execute("DELETE FROM pc_availability WHERE id=?", (avail_id,))
+    conn.commit()
+    conn.close()
+    flash("Availability schedule deleted.", "info")
+    return redirect("/pc_availability")
+
 
 # =========================
 # LOGIN
@@ -491,7 +657,7 @@ def about():
 @app.route("/login", methods=["POST"])
 def login_user():
     student_id = request.form["student_id"]
-    password = request.form["password"]
+    password   = request.form["password"]
 
     conn = get_db()
     user = conn.execute(
@@ -551,21 +717,19 @@ def dashboard():
     ).fetchone()
     remaining_session = student_data["remaining_session"] if student_data else 30
 
-    # ── Student's own reservations ──
     my_reservations = conn.execute("""
         SELECT * FROM reservations
         WHERE student_id=?
         ORDER BY created_at DESC
     """, (user["student_id"],)).fetchall()
 
-    # Check if student already has a pending reservation
     pending_reservation = conn.execute("""
         SELECT * FROM reservations
         WHERE student_id=? AND status='PENDING'
         LIMIT 1
     """, (user["student_id"],)).fetchone()
 
-    # ── In-app notification: detect newly approved/declined reservations ──
+    # In-app notification: newly approved/declined reservations
     unseen = conn.execute("""
         SELECT * FROM reservations
         WHERE student_id=? AND status IN ('APPROVED','DECLINED') AND seen_by_student=0
@@ -574,10 +738,10 @@ def dashboard():
 
     for res in unseen:
         if res["status"] == "APPROVED":
-            flash(f"\u2705 Your reservation for Lab {res['lab']} PC {res['pc_number']} on {res['date']} at {res['time_slot']} has been APPROVED!", "success")
+            flash(f"✅ Your reservation for Lab {res['lab']} PC {res['pc_number']} on {res['date']} at {res['time_slot']} has been APPROVED!", "success")
         else:
             note = f" Reason: {res['admin_note']}" if res["admin_note"] else ""
-            flash(f"\u274c Your reservation for Lab {res['lab']} PC {res['pc_number']} on {res['date']} has been DECLINED.{note}", "error")
+            flash(f"❌ Your reservation for Lab {res['lab']} PC {res['pc_number']} on {res['date']} has been DECLINED.{note}", "error")
 
     if unseen:
         conn.execute("""
@@ -586,16 +750,19 @@ def dashboard():
         """, (user["student_id"],))
         conn.commit()
 
-    # ── Recent sit-in sessions with has_feedback flag ──
-    recent_rows = conn.execute("""
-    SELECT s.*
-    FROM sitin_records s
-    LEFT JOIN feedback f ON f.sitin_id = s.id
-    WHERE s.student_id=? 
-      AND f.id IS NULL   -- ✅ REMOVE sessions that already have feedback
-    ORDER BY s.time_in DESC
-    LIMIT 20
-        """, (user["student_id"],)).fetchall()
+    # Recent sit-in sessions — include has_feedback flag
+    recent_rows_raw = conn.execute("""
+        SELECT s.*,
+               CASE WHEN f.id IS NOT NULL THEN 1 ELSE 0 END AS has_feedback
+        FROM sitin_records s
+        LEFT JOIN feedback f ON f.sitin_id = s.id
+        WHERE s.student_id=?
+        ORDER BY s.time_in DESC
+        LIMIT 20
+    """, (user["student_id"],)).fetchall()
+
+    # Convert to dicts so templates can access has_feedback
+    recent_sessions = [dict(r) for r in recent_rows_raw]
 
     conn.close()
 
@@ -607,7 +774,7 @@ def dashboard():
                            remaining_session=remaining_session,
                            my_reservations=my_reservations,
                            pending_reservation=pending_reservation,
-                           recent_sessions=recent_rows)
+                           recent_sessions=recent_sessions)
 
 # =========================
 # SEARCH STUDENT
@@ -652,9 +819,9 @@ def get_student_info():
 @app.route("/sitin", methods=["POST"])
 def sitin():
     id_number = request.form["id_number"]
-    name = request.form["student_name"]
-    purpose = request.form["purpose"]
-    lab = request.form["lab"]
+    name      = request.form["student_name"]
+    purpose   = request.form["purpose"]
+    lab       = request.form["lab"]
 
     conn = get_db()
 
@@ -828,9 +995,9 @@ def student_sitin():
         conn.close()
         return redirect("/dashboard")
 
-    lab = request.form["lab"]
+    lab     = request.form["lab"]
     purpose = request.form["purpose"]
-    name = f"{user['first_name']} {user['last_name']}"
+    name    = f"{user['first_name']} {user['last_name']}"
 
     conn.execute("""
         INSERT INTO sitin_records (student_id, name, purpose, lab, session)
@@ -894,10 +1061,8 @@ def update_profile():
                 except Exception:
                     pass
         new_pic = None
-
     elif captured_data:
         new_pic = save_profile_pic(base64_data=captured_data, old_pic=old_pic)
-
     elif uploaded_file and uploaded_file.filename:
         new_pic = save_profile_pic(file=uploaded_file, old_pic=old_pic)
 
@@ -912,19 +1077,16 @@ def update_profile():
     return redirect("/dashboard")
 
 # =========================
-# ── RESERVATIONS ──
+# RESERVATIONS
 # =========================
-
 @app.route("/reserve_sitin", methods=["POST"])
 def reserve_sitin():
-    """Student submits a reservation request."""
     if "user_id" not in session or session.get("is_admin"):
         return redirect("/")
 
     conn = get_db()
     user = conn.execute("SELECT * FROM users WHERE id=?", (session["user_id"],)).fetchone()
 
-    # Block if already has a pending reservation
     existing_pending = conn.execute("""
         SELECT * FROM reservations WHERE student_id=? AND status='PENDING'
     """, (user["student_id"],)).fetchone()
@@ -934,7 +1096,6 @@ def reserve_sitin():
         conn.close()
         return redirect("/dashboard")
 
-    # Block if already sitting in
     active_sitin = conn.execute("""
         SELECT * FROM sitin_records WHERE student_id=? AND status='IN'
     """, (user["student_id"],)).fetchone()
@@ -949,12 +1110,12 @@ def reserve_sitin():
         conn.close()
         return redirect("/dashboard")
 
-    lab        = request.form["lab"]
-    pc_number  = request.form.get("pc_number", "").strip()
-    purpose    = request.form["purpose"]
-    date       = request.form["date"]
-    time_slot  = request.form["time_slot"]
-    name       = f"{user['first_name']} {user['last_name']}"
+    lab       = request.form["lab"]
+    pc_number = request.form.get("pc_number", "").strip()
+    purpose   = request.form["purpose"]
+    date      = request.form["date"]
+    time_slot = request.form["time_slot"]
+    name      = f"{user['first_name']} {user['last_name']}"
 
     if not pc_number.isdigit():
         flash("Please select a valid PC number.", "warning")
@@ -994,7 +1155,6 @@ def reserve_sitin():
 
 @app.route("/cancel_reservation/<int:res_id>", methods=["POST"])
 def cancel_reservation(res_id):
-    """Student cancels their own pending reservation."""
     if "user_id" not in session or session.get("is_admin"):
         return redirect("/")
 
@@ -1012,10 +1172,8 @@ def cancel_reservation(res_id):
 
 @app.route("/admin_reservation_action/<int:res_id>/<action>", methods=["POST"])
 def admin_reservation_action(res_id, action):
-    """Admin accepts or declines a reservation."""
     if not session.get("is_admin"):
         return redirect("/")
-
     if action not in ("accept", "decline"):
         return redirect("/dashboard")
 
@@ -1025,15 +1183,12 @@ def admin_reservation_action(res_id, action):
     conn = get_db()
 
     if action == "accept":
-        # Fetch reservation details to auto-create a sit-in record
         res = conn.execute("SELECT * FROM reservations WHERE id=?", (res_id,)).fetchone()
         if res and res["status"] == "PENDING":
-            # Check student still has sessions
             student = conn.execute(
                 "SELECT * FROM users WHERE student_id=?", (res["student_id"],)
             ).fetchone()
 
-            # Check not already sitting in
             existing = conn.execute("""
                 SELECT * FROM sitin_records WHERE student_id=? AND status='IN'
             """, (res["student_id"],)).fetchone()
@@ -1050,7 +1205,6 @@ def admin_reservation_action(res_id, action):
                 VALUES (?, ?, ?, ?, ?, ?)
             """, (res["student_id"], res["name"], res["purpose"], res["lab"], res["pc_number"], remaining))
 
-            # Deduct one session
             conn.execute("""
                 UPDATE users SET remaining_session = remaining_session - 1
                 WHERE student_id=?
@@ -1059,10 +1213,8 @@ def admin_reservation_action(res_id, action):
     conn.execute("""
         UPDATE reservations SET status=?, admin_note=? WHERE id=?
     """, (new_status, admin_note, res_id))
-
     conn.commit()
 
-    # ── Send email notification to the student ──
     try:
         res_row = conn.execute("SELECT * FROM reservations WHERE id=?", (res_id,)).fetchone()
         if res_row:
@@ -1071,7 +1223,6 @@ def admin_reservation_action(res_id, action):
                 (res_row["student_id"],)
             ).fetchone()
             if student and student["email"]:
-                # Merge admin_note into res dict for the email template
                 res_data = dict(res_row)
                 res_data["admin_note"] = admin_note
                 notify_reservation(
@@ -1098,8 +1249,8 @@ def submit_feedback():
     if "user_id" not in session or session.get("is_admin"):
         return redirect("/")
 
-    sitin_id    = request.form.get("sitin_id", "").strip()
-    rating      = request.form.get("rating", "").strip()
+    sitin_id      = request.form.get("sitin_id", "").strip()
+    rating        = request.form.get("rating", "").strip()
     feedback_text = request.form.get("feedback_text", "").strip()
 
     if not sitin_id or not rating or not feedback_text:
@@ -1109,7 +1260,6 @@ def submit_feedback():
     conn = get_db()
     user = conn.execute("SELECT * FROM users WHERE id=?", (session["user_id"],)).fetchone()
 
-    # Make sure the sitin record belongs to this student and is finished
     record = conn.execute("""
         SELECT * FROM sitin_records
         WHERE id=? AND student_id=? AND status='OUT'
@@ -1120,7 +1270,6 @@ def submit_feedback():
         conn.close()
         return redirect("/dashboard")
 
-    # Prevent duplicate feedback
     existing = conn.execute(
         "SELECT id FROM feedback WHERE sitin_id=?", (sitin_id,)
     ).fetchone()
@@ -1150,6 +1299,9 @@ def logout():
     session.clear()
     return redirect("/")
 
+# =========================
+# EXPORT PDF
+# =========================
 @app.route("/export_sitin_report")
 def export_sitin_report():
     if not session.get("is_admin"):
@@ -1171,7 +1323,7 @@ def export_sitin_report():
     pdf.cell(0, 8, datetime.now().strftime("Generated: %B %d, %Y %I:%M %p"), ln=1, align="C")
     pdf.ln(4)
 
-    headers = ["#", "Student ID", "Name", "Purpose", "Lab", "Session", "Time In", "Time Out", "Duration", "Status"]
+    headers    = ["#", "Student ID", "Name", "Purpose", "Lab", "Session", "Time In", "Time Out", "Duration", "Status"]
     col_widths = [12, 28, 48, 30, 24, 20, 38, 38, 28, 24]
     line_height = 8
 
@@ -1186,19 +1338,19 @@ def export_sitin_report():
     pdf.set_font("Arial", "", 8)
 
     for index, record in enumerate(sitin_records, start=1):
-        student_id = record[1]
-        name = record[2] or ""
-        purpose = record[3] or ""
-        lab = record[4] or ""
+        student_id    = record[1]
+        name          = record[2] or ""
+        purpose       = record[3] or ""
+        lab           = record[4] or ""
         session_count = str(record[5]) if record[5] is not None else ""
-        time_in = record[6] or ""
-        time_out = record[7] or ""
-        status = record[8] or ""
+        time_in       = record[7] or ""
+        time_out      = record[8] or ""
+        status        = record[9] or ""
 
         duration = ""
         if time_in and time_out:
             try:
-                dt_in = datetime.fromisoformat(time_in)
+                dt_in  = datetime.fromisoformat(time_in)
                 dt_out = datetime.fromisoformat(time_out)
                 duration = str(dt_out - dt_in).split(".")[0]
             except Exception:
