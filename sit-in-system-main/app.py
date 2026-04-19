@@ -336,14 +336,14 @@ def normalize_time(t):
     try:
         # Try 24-h first ("HH:MM" or "H:MM")
         if "AM" not in t.upper() and "PM" not in t.upper():
-            h, m = t.split(":")
-            return f"{int(h):02d}:{int(m):02d}"
+            parts = t.split(":")
+            return f"{int(parts[0]):02d}:{int(parts[1]):02d}"
         # 12-h with AM/PM
         upper = t.upper()
         pm = "PM" in upper
         time_part = upper.replace("AM", "").replace("PM", "").strip()
-        h, m = time_part.split(":")
-        h = int(h); m = int(m)
+        parts = time_part.split(":")
+        h = int(parts[0]); m = int(parts[1])
         if pm and h != 12:
             h += 12
         if not pm and h == 12:
@@ -353,23 +353,26 @@ def normalize_time(t):
         return t  # return as-is if we can't parse
 
 
-def slot_overlaps_window(time_slot, time_start, time_end):
+def slot_within_window(time_slot, time_start, time_end):
     """
-    Return True when the student's requested time_slot overlaps with
-    the admin-configured [time_start, time_end] window.
+    Return True ONLY when the student's time_slot falls fully within
+    (or exactly matches) the admin-configured [time_start, time_end] window.
+
+    If the student picks ANY time outside the window → returns False,
+    which causes get_available_pcs_for_slot to fall back to all 50 PCs.
 
     time_slot  : e.g. "9:00 AM - 10:00 AM"  OR just "09:00"
-    time_start : e.g. "08:30"
+    time_start : e.g. "08:30"  (24-h, stored by admin)
     time_end   : e.g. "09:30"
     """
     if not time_start or not time_end:
-        # No restriction — always matches
+        # No restriction configured — always matches (all-day row)
         return True
 
     ts_norm = normalize_time(time_start)
     te_norm = normalize_time(time_end)
 
-    # If the slot looks like "HH:MM AM - HH:MM PM" split it
+    # Split "H:MM AM - H:MM PM" style slot string
     if " - " in time_slot:
         parts = time_slot.split(" - ", 1)
         slot_start = normalize_time(parts[0].strip())
@@ -380,8 +383,8 @@ def slot_overlaps_window(time_slot, time_start, time_end):
     if not slot_start or not slot_end:
         return False
 
-    # Overlap when slot_start < window_end AND slot_end > window_start
-    return slot_start < te_norm and slot_end > ts_norm
+    # Student slot must start >= window start AND end <= window end
+    return slot_start >= ts_norm and slot_end <= te_norm
 
 
 def get_available_pcs_for_slot(conn, room, date, time_slot):
@@ -397,17 +400,18 @@ def get_available_pcs_for_slot(conn, room, date, time_slot):
     matched_row = None
 
     if time_slot and rows:
-        # Find the row whose time window overlaps the requested slot
+        # Find the row whose time window FULLY CONTAINS the requested slot
         for row in rows:
-            if slot_overlaps_window(time_slot, row["time_start"], row["time_end"]):
+            if slot_within_window(time_slot, row["time_start"], row["time_end"]):
                 matched_row = row
                 break
         if not matched_row:
-            # Fall back to an all-day row (no time restriction)
+            # No configured window contains this slot → fall back to all-day row
             for row in rows:
                 if not row["time_start"] and not row["time_end"]:
                     matched_row = row
                     break
+        # If still no match → matched_row stays None → all 50 PCs returned below
     elif rows:
         matched_row = rows[0]
 
@@ -503,6 +507,55 @@ def get_admin_data(search=None):
         "SELECT * FROM pc_availability ORDER BY date DESC, room_number"
     ).fetchall()
 
+    # ── Leaderboard: top 3 students by total sit-in count + accumulated time ──
+    leaderboard_rows = conn.execute("""
+        SELECT
+            u.student_id,
+            u.first_name || ' ' || u.last_name AS full_name,
+            u.course,
+            u.course_level,
+            COUNT(s.id)                          AS total_sitins,
+            SUM(
+                CASE
+                    WHEN s.time_out IS NOT NULL
+                    THEN CAST(
+                        (strftime('%s', s.time_out) - strftime('%s', s.time_in))
+                        AS INTEGER)
+                    ELSE 0
+                END
+            )                                    AS total_seconds
+        FROM sitin_records s
+        JOIN users u ON u.student_id = s.student_id
+        WHERE u.is_admin = 0
+        GROUP BY s.student_id
+        ORDER BY total_sitins DESC, total_seconds DESC
+        LIMIT 3
+    """).fetchall()
+
+    # Convert seconds to "Xh Ym" string
+    def fmt_duration(secs):
+        if not secs or secs <= 0:
+            return "0m"
+        h = secs // 3600
+        m = (secs % 3600) // 60
+        if h > 0:
+            return f"{h}h {m}m"
+        return f"{m}m"
+
+    leaderboard = []
+    medals = ["🥇", "🥈", "🥉"]
+    for idx, row in enumerate(leaderboard_rows):
+        leaderboard.append({
+            "rank":         idx + 1,
+            "medal":        medals[idx],
+            "student_id":   row["student_id"],
+            "full_name":    row["full_name"],
+            "course":       row["course"],
+            "course_level": row["course_level"],
+            "total_sitins": row["total_sitins"],
+            "total_time":   fmt_duration(row["total_seconds"]),
+        })
+
     conn.close()
 
     return dict(
@@ -521,6 +574,7 @@ def get_admin_data(search=None):
         feedback_reports=feedback_reports,
         avg_rating=avg_rating,
         pc_availabilities=pc_availabilities,
+        leaderboard=leaderboard,
     )
 
 # =========================
@@ -595,8 +649,18 @@ def save_pc_availability():
 
     room_number       = request.form.get("room_number", "").strip()
     availability_date = request.form.get("availability_date", "").strip()
-    time_start        = request.form.get("time_start", "").strip() or None
-    time_end          = request.form.get("time_end", "").strip() or None
+    # Strip seconds if browser sends HH:MM:SS — store only HH:MM
+    def strip_seconds(t):
+        if not t: return None
+        t = t.strip()
+        if not t: return None
+        parts = t.split(":")
+        if len(parts) >= 2:
+            return f"{int(parts[0]):02d}:{int(parts[1]):02d}"
+        return t
+
+    time_start = strip_seconds(request.form.get("time_start", ""))
+    time_end   = strip_seconds(request.form.get("time_end", ""))
     available_pcs_raw = request.form.get("available_pcs", "").strip()
 
     if not room_number or not availability_date:
@@ -750,13 +814,15 @@ def dashboard():
         """, (user["student_id"],))
         conn.commit()
 
-    # Recent sit-in sessions — include has_feedback flag
+    # Recent sit-in sessions — exclude sessions that already have feedback submitted
+    # (once feedback is given, the row disappears from the list)
     recent_rows_raw = conn.execute("""
         SELECT s.*,
-               CASE WHEN f.id IS NOT NULL THEN 1 ELSE 0 END AS has_feedback
+               0 AS has_feedback
         FROM sitin_records s
         LEFT JOIN feedback f ON f.sitin_id = s.id
         WHERE s.student_id=?
+          AND f.id IS NULL
         ORDER BY s.time_in DESC
         LIMIT 20
     """, (user["student_id"],)).fetchall()

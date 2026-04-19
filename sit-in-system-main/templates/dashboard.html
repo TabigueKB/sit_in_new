@@ -662,12 +662,16 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 // ════════════════════════════════════════════
-//  HELPER — "HH:MM" (24h) → "H:MM AM/PM"
+//  HELPER — "HH:MM" or "HH:MM:SS" (24h) → "H:MM AM/PM"
+//  Browser <input type="time"> gives HH:MM:SS on some browsers.
+//  We always strip seconds so the slot string stays "H:MM AM/PM".
 // ════════════════════════════════════════════
 function to12h(t) {
     if (!t) return '';
-    const [hStr, mStr] = t.split(':');
-    let h = parseInt(hStr, 10);
+    // Split on ':' — works for both HH:MM and HH:MM:SS
+    const parts = t.split(':');
+    let h = parseInt(parts[0], 10);
+    const mStr = parts[1].padStart(2, '0');   // always 2 digits, ignore seconds
     const ampm = h >= 12 ? 'PM' : 'AM';
     h = h % 12 || 12;
     return `${h}:${mStr} ${ampm}`;

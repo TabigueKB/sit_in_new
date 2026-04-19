@@ -25,83 +25,40 @@
             box-shadow: 0 20px 40px rgba(94,58,140,0.12);
             overflow: hidden;
         }
-        .modal-header {
-            border-bottom: none;
-            padding-bottom: 1rem;
-        }
-        .modal-body {
-            padding: 1.5rem;
-        }
-        .modal-footer {
-            border-top: none;
-            padding: 1rem 1.5rem 1.5rem;
-        }
-        .modal-title { font-weight: 700; }
+        .modal-header { border-bottom: none; padding-bottom: 1rem; }
+        .modal-body   { padding: 1.5rem; }
+        .modal-footer { border-top: none; padding: 1rem 1.5rem 1.5rem; }
+        .modal-title  { font-weight: 700; }
 
         .table-responsive {
-            border-radius: 18px;
-            overflow: hidden;
+            border-radius: 18px; overflow: hidden;
             border: 1px solid #e7def7;
             box-shadow: inset 0 0 0 1px rgba(255,255,255,0.8);
         }
-        .table {
-            background: #fff;
-            margin-bottom: 0;
-        }
-        .table th,
-        .table td {
-            vertical-align: middle;
-            padding: 14px 16px;
-            border-top: 1px solid #f2eaf8;
-        }
-        .table thead th {
-            background: #5e3a8c;
-            color: white;
-            border-bottom: none;
-            border-top: none;
-        }
-        .table tbody tr {
-            background: #fff;
-        }
-        .table-hover tbody tr:hover {
-            background: #f8f5ff;
-        }
-        .table td {
-            color: #4f4378;
-        }
-        .table .text-muted {
-            color: #7a6a91 !important;
-        }
+        .table { background: #fff; margin-bottom: 0; }
+        .table th, .table td { vertical-align: middle; padding: 14px 16px; border-top: 1px solid #f2eaf8; }
+        .table thead th { background: #5e3a8c; color: white; border-bottom: none; border-top: none; }
+        .table tbody tr { background: #fff; }
+        .table-hover tbody tr:hover { background: #f8f5ff; }
+        .table td { color: #4f4378; }
+        .table .text-muted { color: #7a6a91 !important; }
 
         .form-control {
-            border-radius: 12px;
-            border: 1px solid #d9cde8;
-            background: #fff;
+            border-radius: 12px; border: 1px solid #d9cde8; background: #fff;
             transition: border-color 0.2s, box-shadow 0.2s;
         }
         .form-control:focus {
             border-color: rgba(94,58,140,0.55);
             box-shadow: 0 0 0 0.15rem rgba(94,58,140,0.12);
         }
-        .modal-body label {
-            font-weight: 700;
-            color: #4e3b7d;
-        }
+        .modal-body label { font-weight: 700; color: #4e3b7d; }
 
-        .table .badge {
-            font-size: .8rem;
-            padding: 5px 12px;
-            border-radius: 999px;
-        }
-
+        .table .badge { font-size: .8rem; padding: 5px 12px; border-radius: 999px; }
         .status-in-badge  { background-color: #cce5ff; color: #004085; }
         .status-out-badge { background-color: #d4edda; color: #155724; }
+        .shadow-sm { box-shadow: 0 10px 30px rgba(94,58,140,0.08) !important; }
 
-        .shadow-sm {
-            box-shadow: 0 10px 30px rgba(94,58,140,0.08) !important;
-        }
-
-        /* Profile Picture Styles */
+        /* Profile Picture */
         .profile-pic-wrapper { position: relative; width: 100px; height: 100px; margin: 0 auto 12px; }
         .profile-pic-preview { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #5e3a8c; background: #f0e6ff; display: block; }
         .profile-pic-placeholder { width: 100px; height: 100px; border-radius: 50%; background: #f0e6ff; border: 3px solid #5e3a8c; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: #5e3a8c; cursor: pointer; }
@@ -109,9 +66,7 @@
         #cameraStream { width: 100%; border-radius: 8px; display: none; }
         #captureCanvas { display: none; }
         .camera-controls { display: none; gap: 8px; justify-content: center; margin-top: 8px; }
-
         .navbar-profile-pic { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid #fff; margin-right: 6px; cursor: pointer; }
-        .navbar-profile-placeholder { width: 32px; height: 32px; border-radius: 50%; background: #f0e6ff; border: 2px solid #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 1rem; color: #5e3a8c; margin-right: 6px; cursor: pointer; }
 
         /* Password toggle */
         .pw-wrap { position: relative; }
@@ -129,22 +84,34 @@
         .status-out-badge { background-color: #d4edda; color: #155724; padding: 3px 10px; border-radius: 20px; font-size: .78rem; font-weight: 600; }
         .report-filter-bar { background: #f8f5ff; border: 1px solid #e0d0f7; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; }
 
-        /* Reservation status badges */
+        /* Reservation badges */
         .res-pending   { background:#fff3cd; color:#856404; padding:3px 10px; border-radius:20px; font-size:.78rem; font-weight:600; border:1px solid #ffc107; }
         .res-approved  { background:#d1e7dd; color:#0a3622; padding:3px 10px; border-radius:20px; font-size:.78rem; font-weight:600; border:1px solid #198754; }
         .res-declined  { background:#f8d7da; color:#58151c; padding:3px 10px; border-radius:20px; font-size:.78rem; font-weight:600; border:1px solid #dc3545; }
         .res-cancelled { background:#e2e3e5; color:#41464b; padding:3px 10px; border-radius:20px; font-size:.78rem; font-weight:600; }
 
-        /* Pending notification dot */
-        .notif-dot {
-            display: inline-flex; align-items: center; justify-content: center;
-            background: #dc3545; color: white; border-radius: 50%;
-            width: 18px; height: 18px; font-size: .68rem; font-weight: 700;
-            margin-left: 4px; vertical-align: middle; line-height: 1;
-        }
-
-        /* Accept/Decline inline form */
+        .notif-dot { display: inline-flex; align-items: center; justify-content: center; background: #dc3545; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: .68rem; font-weight: 700; margin-left: 4px; vertical-align: middle; }
         .action-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+        /* ── Leaderboard ── */
+        .leaderboard-card { border-radius: 16px; overflow: hidden; margin-top: 24px; }
+        .leaderboard-card .card-header { background: linear-gradient(135deg, #5e3a8c, #7c4dba); }
+
+        .lb-col-1 { background: linear-gradient(160deg, #fffbe6 0%, #fff3c4 100%); }
+        .lb-col-2 { background: linear-gradient(160deg, #f4f6f8 0%, #e8eaed 100%); }
+        .lb-col-3 { background: linear-gradient(160deg, #fff5ee 0%, #fde8d4 100%); }
+
+        .lb-medal   { font-size: 3rem; line-height: 1; margin-bottom: 2px; }
+        .lb-rank    { font-size: .65rem; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; margin-bottom: 12px; }
+        .lb-rank-1  { color: #92680a; }
+        .lb-rank-2  { color: #5f6b7a; }
+        .lb-rank-3  { color: #9a4a1a; }
+        .lb-name    { font-size: 1.05rem; font-weight: 700; color: #1e1040; margin-bottom: 2px; }
+        .lb-meta    { font-size: .77rem; color: #7260a0; margin-bottom: 14px; }
+        .lb-pill    { border-radius: 20px; padding: 4px 14px; font-size: .77rem; font-weight: 700; }
+        .lb-pill-sitins { background: #ede9fe; color: #4c2d8a; }
+        .lb-pill-time   { background: #ecfdf5; color: #065f46; }
+        .lb-empty   { background: #fafafa; min-height: 200px; }
     </style>
 </head>
 
@@ -153,46 +120,27 @@
 <!-- NAVBAR -->
 <nav class="navbar navbar-expand-lg px-4">
     <span class="navbar-brand">College of Computer Studies Admin</span>
-
     <div class="ms-auto d-flex align-items-center">
-
-        <!-- ✅ KEEP ONLY HOME -->
         <a class="nav-link me-3" href="/dashboard">Home</a>
-
-        <!-- ✅ DROPDOWN (UNCHANGED POSITION, UPDATED CONTENT) -->
         <div class="dropdown ms-2">
             <button class="btn btn-warning btn-sm dropdown-toggle d-flex align-items-center gap-2"
                     type="button" data-bs-toggle="dropdown">
-
                 {% if user.profile_pic %}
                     <img src="{{ url_for('static', filename='uploads/' + user.profile_pic) }}"
                          class="navbar-profile-pic" alt="Profile" style="margin-right:0;">
                 {% else %}
                     <span style="font-size:1rem;">👤</span>
                 {% endif %}
-
                 {{ user.first_name }}
             </button>
-
             <ul class="dropdown-menu dropdown-menu-end">
-
-                <!-- ✅ FIRST -->
-                <li>
-                    <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#editProfileModal">
-                        👤 Edit Profile
-                    </a>
-                </li>
-
+                <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#editProfileModal">👤 Edit Profile</a></li>
                 <li><hr class="dropdown-divider"></li>
-
-                <!-- ✅ MOVED FEATURES HERE -->
                 <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#searchModal">🔍 Search</a></li>
                 <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#studentsModal">👨‍🎓 Students</a></li>
                 <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#sitInModal">💻 Sit-in</a></li>
                 <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#recordsModal">📋 Records</a></li>
                 <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#sitInReportsModal">📊 Reports</a></li>
-
-                <!-- ✅ KEEP NOTIFICATION -->
                 <li>
                     <a class="dropdown-item d-flex justify-content-between align-items-center"
                        href="#" data-bs-toggle="modal" data-bs-target="#reservationsModal">
@@ -202,17 +150,10 @@
                         {% endif %}
                     </a>
                 </li>
-
                 <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#feedbackReportsModal">💬 Feedback</a></li>
-
-                <!-- ✅ NEW PAGE -->
                 <li><a class="dropdown-item" href="/pc_availability">🖥 PC Availability</a></li>
-
                 <li><hr class="dropdown-divider"></li>
-
-                <!-- ✅ LAST -->
                 <li><a class="dropdown-item text-danger" href="/logout">Logout</a></li>
-
             </ul>
         </div>
     </div>
@@ -222,6 +163,7 @@
 <div class="container mt-4">
     <div class="row">
 
+        <!-- Stats card -->
         <div class="col-md-6">
             <div class="card">
                 <div class="card-header">📊 Statistics</div>
@@ -240,6 +182,7 @@
             </div>
         </div>
 
+        <!-- Announcement card -->
         <div class="col-md-6">
             <div class="card">
                 <div class="card-header">📢 Announcement</div>
@@ -260,11 +203,81 @@
             </div>
         </div>
 
+        <!-- ══ LEADERBOARD ══ -->
+        <div class="col-md-12 mt-4">
+            <div class="card leaderboard-card">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <span>🏆 Sit-In Leaderboard — Top 3 Students</span>
+                    <small style="font-size:.8rem; opacity:.85;">Ranked by total sit-ins &amp; accumulated time</small>
+                </div>
+                <div class="card-body p-0">
+                    {% if leaderboard %}
+                    <div class="row g-0">
+
+                        {% for entry in leaderboard %}
+                        <div class="col-md-4 {% if not loop.last %}border-end{% endif %}">
+                            <div class="p-4 text-center h-100
+                                {% if entry.rank == 1 %}lb-col-1
+                                {% elif entry.rank == 2 %}lb-col-2
+                                {% else %}lb-col-3{% endif %}"
+                                 style="min-height:210px;">
+
+                                <div class="lb-medal">{{ entry.medal }}</div>
+
+                                <div class="lb-rank
+                                    {% if entry.rank == 1 %}lb-rank-1
+                                    {% elif entry.rank == 2 %}lb-rank-2
+                                    {% else %}lb-rank-3{% endif %}">
+                                    {{ ['1ST PLACE','2ND PLACE','3RD PLACE'][entry.rank - 1] }}
+                                </div>
+
+                                <div class="lb-name">{{ entry.full_name }}</div>
+                                <div class="lb-meta">
+                                    {{ entry.course }} &nbsp;·&nbsp; Year {{ entry.course_level }}
+                                </div>
+
+                                <div class="d-flex justify-content-center gap-2 flex-wrap">
+                                    <span class="lb-pill lb-pill-sitins">
+                                        💻 {{ entry.total_sitins }} sit-in{{ 's' if entry.total_sitins != 1 else '' }}
+                                    </span>
+                                    <span class="lb-pill lb-pill-time">
+                                        ⏱ {{ entry.total_time }}
+                                    </span>
+                                </div>
+
+                            </div>
+                        </div>
+                        {% endfor %}
+
+                        {# Fill empty slots if fewer than 3 students #}
+                        {% if leaderboard|length < 3 %}
+                            {% for i in range(3 - leaderboard|length) %}
+                            <div class="col-md-4 {% if (leaderboard|length + i) < 2 %}border-end{% endif %}">
+                                <div class="lb-empty d-flex flex-column align-items-center justify-content-center text-center p-4">
+                                    <div style="font-size:2.2rem; color:#d1c4e9; margin-bottom:6px;">🪑</div>
+                                    <div style="font-size:.82rem; color:#bbb;">No data yet</div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% endif %}
+
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-5">
+                        <div style="font-size:2.5rem;">🏆</div>
+                        <p class="mt-2 mb-0">No sit-in records yet. The leaderboard will appear once students start sitting in.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <!-- ══ /LEADERBOARD ══ -->
+
     </div>
 </div>
 
 <!-- ══════════════════════════════════════════
-     RESERVATIONS MODAL  (Pending Log only)
+     RESERVATIONS MODAL
 ══════════════════════════════════════════ -->
 <div class="modal fade" id="reservationsModal" tabindex="-1">
     <div class="modal-dialog modal-xl">
@@ -331,7 +344,7 @@
     </div>
 </div>
 
-<!-- ── Decline with note modal ── -->
+<!-- Decline with note modal -->
 <div class="modal fade" id="declineModal" tabindex="-1">
     <div class="modal-dialog modal-sm">
         <div class="modal-content">
@@ -376,16 +389,12 @@
                 <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-
-                <!-- Filter bar -->
                 <div class="report-filter-bar d-flex flex-wrap gap-2 align-items-end mb-3">
                     <div>
                         <label class="form-label mb-1" style="font-size:.82rem; font-weight:600;">Filter by Lab</label>
                         <select id="fbLabFilter" class="form-control form-control-sm" style="width:130px;">
                             <option value="">All Labs</option>
-                            {% for room in rooms %}
-                            <option>{{ room.room_number }}</option>
-                            {% endfor %}
+                            {% for room in rooms %}<option>{{ room.room_number }}</option>{% endfor %}
                         </select>
                     </div>
                     <div>
@@ -403,20 +412,13 @@
                         <button class="btn btn-sm btn-outline-secondary" onclick="clearFbFilters()">Clear Filters</button>
                     </div>
                 </div>
-
                 {% if feedback_reports %}
                 <div class="table-responsive">
                     <table id="feedbackReportsTable" class="table table-bordered table-hover w-100 align-middle" style="font-size:.87rem;">
                         <thead class="table-dark">
                             <tr>
-                                <th>#</th>
-                                <th>Student ID</th>
-                                <th>Name</th>
-                                <th>Lab</th>
-                                <th>Purpose</th>
-                                <th>Rating</th>
-                                <th>Feedback</th>
-                                <th>Submitted</th>
+                                <th>#</th><th>Student ID</th><th>Name</th><th>Lab</th>
+                                <th>Purpose</th><th>Rating</th><th>Feedback</th><th>Submitted</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -433,12 +435,8 @@
                                     </span>
                                     <span class="text-muted ms-1" style="font-size:.78rem;">({{ fb.rating }}/5)</span>
                                 </td>
-                                <td style="max-width:280px; white-space:normal; font-size:.82rem;">
-                                    {{ fb.feedback_text }}
-                                </td>
-                                <td style="font-size:.78rem; color:#666; white-space:nowrap;">
-                                    {{ (fb.submitted_at | string)[:16] }}
-                                </td>
+                                <td style="max-width:280px; white-space:normal; font-size:.82rem;">{{ fb.feedback_text }}</td>
+                                <td style="font-size:.78rem; color:#666; white-space:nowrap;">{{ (fb.submitted_at | string)[:16] }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -501,12 +499,8 @@
                     <table id="studentListTable" class="table table-hover align-middle mb-0">
                         <thead class="table-dark">
                             <tr>
-                                <th>ID Number</th>
-                                <th>Name</th>
-                                <th>Year Level</th>
-                                <th>Course</th>
-                                <th>Remaining Session</th>
-                                <th>Actions</th>
+                                <th>ID Number</th><th>Name</th><th>Year Level</th>
+                                <th>Course</th><th>Remaining Session</th><th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -570,9 +564,7 @@
                             <label for="sitInLab">Lab</label>
                             <select id="sitInLab" name="lab" class="form-control" required>
                                 <option value="">Select</option>
-                                {% for room in rooms %}
-                                <option>{{ room.room_number }}</option>
-                                {% endfor %}
+                                {% for room in rooms %}<option>{{ room.room_number }}</option>{% endfor %}
                             </select>
                         </div>
                         <div class="col-md-6">
@@ -603,14 +595,8 @@
                     <table id="sitInRecordTable" class="table table-hover align-middle mb-0">
                         <thead class="table-dark">
                             <tr>
-                                <th>Sit ID Number</th>
-                                <th>ID Number</th>
-                                <th>Name</th>
-                                <th>Purpose</th>
-                                <th>Sit Lab</th>
-                                <th>Session</th>
-                                <th>Status</th>
-                                <th>Actions</th>
+                                <th>Sit ID</th><th>ID Number</th><th>Name</th><th>Purpose</th>
+                                <th>Lab</th><th>Session</th><th>Status</th><th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -657,8 +643,6 @@
                 <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-
-                <!-- Tabs -->
                 <ul class="nav nav-tabs mb-3" id="reportTabs">
                     <li class="nav-item">
                         <a class="nav-link active" data-bs-toggle="tab" href="#tabSitinRecords">🖥️ Sit-in Records</a>
@@ -667,7 +651,6 @@
                         <a class="nav-link" data-bs-toggle="tab" href="#tabReservationHistory">🗓️ Reservation History</a>
                     </li>
                 </ul>
-
                 <div class="tab-content">
 
                     <!-- Tab 1: Sit-in Records -->
@@ -744,7 +727,7 @@
                         </div>
                     </div>
 
-                    <!-- Tab 2: Reservation History (approved/declined/cancelled) -->
+                    <!-- Tab 2: Reservation History -->
                     <div class="tab-pane fade" id="tabReservationHistory">
                         <div class="d-flex flex-wrap gap-2 align-items-end mb-3">
                             <div>
@@ -808,7 +791,7 @@
                         </div>
                     </div>
 
-                </div><!-- /tab-content -->
+                </div>
             </div>
         </div>
     </div>
@@ -818,10 +801,7 @@
 <div class="modal fade" id="addStudentModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5>Add Student</h5>
-                <button class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
+            <div class="modal-header"><h5>Add Student</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 <form method="POST" action="/register_user">
                     <input class="form-control mb-2" name="student_id" placeholder="Student ID" pattern="[0-9]+" title="Numbers only" required>
@@ -835,10 +815,8 @@
                     </select>
                     <select name="course_level" class="form-control mb-2" required>
                         <option value="">Year Level</option>
-                        <option value="1">1</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
+                        <option value="1">1</option><option value="2">2</option>
+                        <option value="3">3</option><option value="4">4</option>
                     </select>
                     <input class="form-control mb-2" name="email" type="email" placeholder="Email" required>
                     <input class="form-control mb-2" name="address" placeholder="Address" required>
@@ -863,10 +841,7 @@
 <div class="modal fade" id="editStudentModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5>Edit Student</h5>
-                <button class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
+            <div class="modal-header"><h5>Edit Student</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 <form method="POST" action="/edit_student">
                     <input type="hidden" name="student_id" id="editStudentId">
@@ -970,19 +945,8 @@ function togglePw(inputId, btn) {
 const openSearch = {{ (open_search | default(false)) | tojson }};
 if (openSearch) new bootstrap.Modal(document.getElementById('studentsModal')).show();
 
-// ── Set min available date for PC schedules to today ──
-(function () {
-    const availabilityDate = document.getElementById('availabilityDate');
-    if (availabilityDate) {
-        const today = new Date().toISOString().split('T')[0];
-        availabilityDate.min = today;
-    }
-})();
-
 // ── DataTables ──
-let reportsTable = null;
-let resTable = null;
-let fbTable  = null;
+let reportsTable = null, resTable = null, fbTable = null;
 
 $('#studentsModal').on('shown.bs.modal', function () {
     if (!$.fn.DataTable.isDataTable('#studentListTable'))
@@ -994,19 +958,13 @@ $('#recordsModal').on('shown.bs.modal', function () {
 });
 $('#sitInReportsModal').on('shown.bs.modal', function () {
     if (!$.fn.DataTable.isDataTable('#sitInReportsTable')) {
-        reportsTable = $('#sitInReportsTable').DataTable({
-            pageLength: 15,
-            order: [[5, 'desc'], [6, 'desc']]
-        });
+        reportsTable = $('#sitInReportsTable').DataTable({ pageLength: 15, order: [[5,'desc'],[6,'desc']] });
     }
     computeDurations();
 });
 $('#feedbackReportsModal').on('shown.bs.modal', function () {
     if (!$.fn.DataTable.isDataTable('#feedbackReportsTable')) {
-        fbTable = $('#feedbackReportsTable').DataTable({
-            pageLength: 15,
-            order: [[7, 'desc']]
-        });
+        fbTable = $('#feedbackReportsTable').DataTable({ pageLength: 15, order: [[7,'desc']] });
     }
 });
 $('#reservationsModal').on('shown.bs.modal', function () {
@@ -1017,21 +975,19 @@ $('#reservationsModal').on('shown.bs.modal', function () {
     } catch(e) { console.warn('reservationsTable DataTable:', e); }
 });
 
-// Init resHistoryTable when its tab is shown
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     var histTab = document.querySelector('[href="#tabReservationHistory"]');
     if (histTab) {
-        histTab.addEventListener('shown.bs.tab', function() {
-            if (!$.fn.DataTable.isDataTable('#resHistoryTable')) {
+        histTab.addEventListener('shown.bs.tab', function () {
+            if (!$.fn.DataTable.isDataTable('#resHistoryTable'))
                 $('#resHistoryTable').DataTable({ pageLength: 15, order: [[8,'desc']] });
-            }
         });
     }
 });
 
 // ── Compute durations client-side ──
 function computeDurations() {
-    document.querySelectorAll('.duration-badge[data-timein]').forEach(function(el) {
+    document.querySelectorAll('.duration-badge[data-timein]').forEach(function (el) {
         const tin  = new Date(el.dataset.timein);
         const tout = new Date(el.dataset.timeout);
         if (!isNaN(tin) && !isNaN(tout)) {
@@ -1049,7 +1005,7 @@ function applyReportFilters() {
     const labVal    = document.getElementById('reportLabFilter').value.toLowerCase();
     const statusVal = document.getElementById('reportStatusFilter').value.toUpperCase();
     $.fn.dataTable.ext.search = [];
-    $.fn.dataTable.ext.search.push(function(settings, data) {
+    $.fn.dataTable.ext.search.push(function (settings, data) {
         if (settings.nTable.id !== 'sitInReportsTable') return true;
         if (dateVal   && !data[5].trim().includes(dateVal)) return false;
         if (labVal    && !data[4].toLowerCase().includes(labVal)) return false;
@@ -1060,7 +1016,7 @@ function applyReportFilters() {
 }
 function clearReportFilters() {
     document.getElementById('reportDateFilter').value = '';
-    document.getElementById('reportLabFilter').value = '';
+    document.getElementById('reportLabFilter').value  = '';
     document.getElementById('reportStatusFilter').value = '';
     $.fn.dataTable.ext.search = [];
     if (reportsTable) reportsTable.draw();
@@ -1074,9 +1030,9 @@ function applyFbFilters() {
     if (!fbTable) return;
     const labVal    = document.getElementById('fbLabFilter').value.toLowerCase();
     const ratingVal = parseInt(document.getElementById('fbRatingFilter').value) || 0;
-    $.fn.dataTable.ext.search.push(function(settings, data) {
+    $.fn.dataTable.ext.search.push(function (settings, data) {
         if (settings.nTable.id !== 'feedbackReportsTable') return true;
-        if (labVal   && !data[3].toLowerCase().includes(labVal)) return false;
+        if (labVal && !data[3].toLowerCase().includes(labVal)) return false;
         if (ratingVal) {
             const r = parseInt(data[5].replace(/[^0-9]/g, '')) || 0;
             if (r < ratingVal) return false;
@@ -1086,7 +1042,7 @@ function applyFbFilters() {
     fbTable.draw();
 }
 function clearFbFilters() {
-    document.getElementById('fbLabFilter').value   = '';
+    document.getElementById('fbLabFilter').value    = '';
     document.getElementById('fbRatingFilter').value = '';
     $.fn.dataTable.ext.search = [];
     if (fbTable) fbTable.draw();
@@ -1094,19 +1050,13 @@ function clearFbFilters() {
 document.getElementById('fbLabFilter').addEventListener('change', applyFbFilters);
 document.getElementById('fbRatingFilter').addEventListener('change', applyFbFilters);
 
-// ── Reservation filters ──
-function applyResFilters() { /* no-op: filters now in Reservation History tab */ }
-function clearResFilters() { /* no-op: filters now in Reservation History tab */ }
-
 // ── Reservation History tab filter ──
 function filterResHistory() {
     const statusVal = (document.getElementById('resHistStatusFilter').value || '').toUpperCase();
     const labVal    = (document.getElementById('resHistLabFilter').value    || '').toUpperCase();
-    document.querySelectorAll('#resHistoryBody tr').forEach(function(row) {
-        const rowStatus = (row.dataset.status || '').toUpperCase();
-        const rowLab    = (row.dataset.lab    || '').toUpperCase();
-        const matchStatus = !statusVal || rowStatus === statusVal;
-        const matchLab    = !labVal    || rowLab    === labVal;
+    document.querySelectorAll('#resHistoryBody tr').forEach(function (row) {
+        const matchStatus = !statusVal || (row.dataset.status || '').toUpperCase() === statusVal;
+        const matchLab    = !labVal    || (row.dataset.lab    || '').toUpperCase() === labVal;
         row.style.display = (matchStatus && matchLab) ? '' : 'none';
     });
 }
@@ -1122,13 +1072,16 @@ new Chart(document.getElementById('statsChart'), {
             label: 'Total Sit-ins',
             data: chartData,
             backgroundColor: ['rgba(94,58,140,.8)','rgba(13,110,253,.8)','rgba(25,135,84,.8)','rgba(255,193,7,.8)'],
-            borderColor:      ['rgba(94,58,140,1)', 'rgba(13,110,253,1)', 'rgba(25,135,84,1)', 'rgba(255,193,7,1)'],
+            borderColor:     ['rgba(94,58,140,1)', 'rgba(13,110,253,1)', 'rgba(25,135,84,1)', 'rgba(255,193,7,1)'],
             borderWidth: 2, borderRadius: 6
         }]
     },
     options: {
         responsive: true,
-        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' ' + ctx.parsed.y + ' sit-ins' } } },
+        plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: ctx => ' ' + ctx.parsed.y + ' sit-ins' } }
+        },
         scales: {
             y: { beginAtZero: true, ticks: { stepSize:1, precision:0 }, title: { display:true, text:'Number of Sit-ins' } },
             x: { title: { display:true, text:'Purpose' } }
@@ -1153,21 +1106,17 @@ document.getElementById('sitInIdNumber').addEventListener('blur', function () {
 
 // ── Pre-fill Edit Student modal ──
 function openEditModal(id, firstName, lastName, course, courseLevel, email) {
-    document.getElementById('editStudentId').value = id;
-    document.getElementById('editFirstName').value = firstName;
-    document.getElementById('editLastName').value = lastName;
-    document.getElementById('editCourse').value = course;
-    document.getElementById('editCourseLevel').value = courseLevel;
-    document.getElementById('editEmail').value = email;
+    document.getElementById('editStudentId').value    = id;
+    document.getElementById('editFirstName').value    = firstName;
+    document.getElementById('editLastName').value     = lastName;
+    document.getElementById('editCourse').value       = course;
+    document.getElementById('editCourseLevel').value  = courseLevel;
+    document.getElementById('editEmail').value        = email;
     new bootstrap.Modal(document.getElementById('editStudentModal')).show();
 }
 
 // ── Reservation actions ──
-function confirmAction(form, type) {
-    // just let it submit immediately for Accept; decline has its own modal
-    return true;
-}
-
+function confirmAction(form, type) { return true; }
 function openDeclineModal(resId, studentName) {
     document.getElementById('declineStudentName').textContent = studentName;
     document.getElementById('declineForm').action = `/admin_reservation_action/${resId}/decline`;
@@ -1179,7 +1128,7 @@ function previewUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = function (e) {
         showPreviewImage(e.target.result);
         document.getElementById('capturedPhotoData').value = '';
         document.getElementById('removePicFlag').value = '0';
@@ -1208,14 +1157,14 @@ function startCamera() {
     const video = document.getElementById('cameraStream');
     const controls = document.getElementById('cameraControls');
     navigator.mediaDevices.getUserMedia({ video: true })
-        .then(function(stream) {
+        .then(function (stream) {
             cameraStream = stream; video.srcObject = stream;
             video.style.display = 'block'; controls.style.display = 'flex';
         })
-        .catch(function(err) { alert('Could not access camera: ' + err.message); });
+        .catch(function (err) { alert('Could not access camera: ' + err.message); });
 }
 function capturePhoto() {
-    const video = document.getElementById('cameraStream');
+    const video  = document.getElementById('cameraStream');
     const canvas = document.getElementById('captureCanvas');
     canvas.width = video.videoWidth; canvas.height = video.videoHeight;
     canvas.getContext('2d').drawImage(video, 0, 0);
@@ -1234,7 +1183,7 @@ document.getElementById('editProfileModal').addEventListener('hidden.bs.modal', 
 
 // ── Flash Messages ──
 var flashMessages = {{ get_flashed_messages(with_categories=true) | tojson }};
-flashMessages.forEach(function(msg) {
+flashMessages.forEach(function (msg) {
     Swal.fire({
         icon: msg[0], title: msg[1],
         showConfirmButton: false, timer: 2500,
