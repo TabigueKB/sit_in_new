@@ -94,24 +94,24 @@
         .action-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 
         /* ── Leaderboard ── */
-        .leaderboard-card { border-radius: 16px; overflow: hidden; margin-top: 24px; }
+        .leaderboard-card { border-radius: 16px; overflow: hidden; }
         .leaderboard-card .card-header { background: linear-gradient(135deg, #5e3a8c, #7c4dba); }
 
         .lb-col-1 { background: linear-gradient(160deg, #fffbe6 0%, #fff3c4 100%); }
         .lb-col-2 { background: linear-gradient(160deg, #f4f6f8 0%, #e8eaed 100%); }
         .lb-col-3 { background: linear-gradient(160deg, #fff5ee 0%, #fde8d4 100%); }
 
-        .lb-medal   { font-size: 3rem; line-height: 1; margin-bottom: 2px; }
-        .lb-rank    { font-size: .65rem; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; margin-bottom: 12px; }
+        .lb-medal   { font-size: 2.2rem; line-height: 1; margin-bottom: 2px; }
+        .lb-rank    { font-size: .6rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; }
         .lb-rank-1  { color: #92680a; }
         .lb-rank-2  { color: #5f6b7a; }
         .lb-rank-3  { color: #9a4a1a; }
-        .lb-name    { font-size: 1.05rem; font-weight: 700; color: #1e1040; margin-bottom: 2px; }
-        .lb-meta    { font-size: .77rem; color: #7260a0; margin-bottom: 14px; }
-        .lb-pill    { border-radius: 20px; padding: 4px 14px; font-size: .77rem; font-weight: 700; }
+        .lb-name    { font-size: .95rem; font-weight: 700; color: #1e1040; margin-bottom: 2px; }
+        .lb-meta    { font-size: .72rem; color: #7260a0; margin-bottom: 10px; }
+        .lb-pill    { border-radius: 20px; padding: 3px 10px; font-size: .72rem; font-weight: 700; }
         .lb-pill-sitins { background: #ede9fe; color: #4c2d8a; }
         .lb-pill-time   { background: #ecfdf5; color: #065f46; }
-        .lb-empty   { background: #fafafa; min-height: 200px; }
+        .lb-empty   { background: #fafafa; min-height: 150px; }
     </style>
 </head>
 
@@ -164,7 +164,7 @@
     <div class="row">
 
         <!-- Stats card -->
-        <div class="col-md-6">
+        <div class="col-md-6 d-flex flex-column gap-4">
             <div class="card">
                 <div class="card-header">📊 Statistics</div>
                 <div class="card-body">
@@ -180,10 +180,80 @@
                     <canvas id="statsChart"></canvas>
                 </div>
             </div>
+
+            <!-- ══ LEADERBOARD ══ -->
+            <div class="card leaderboard-card">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <span>🏆 Sit-In Leaderboard — Top 3</span>
+                    <small style="font-size:.75rem; opacity:.85;">By sit-ins &amp; time</small>
+                </div>
+                <div class="card-body p-0">
+                    {% if leaderboard %}
+                    <div class="row g-0">
+
+                        {% for entry in leaderboard %}
+                        <div class="col-4 {% if not loop.last %}border-end{% endif %}">
+                            <div class="p-3 text-center h-100
+                                {% if entry.rank == 1 %}lb-col-1
+                                {% elif entry.rank == 2 %}lb-col-2
+                                {% else %}lb-col-3{% endif %}"
+                                 style="min-height:180px;">
+
+                                <div class="lb-medal">{{ entry.medal }}</div>
+
+                                <div class="lb-rank
+                                    {% if entry.rank == 1 %}lb-rank-1
+                                    {% elif entry.rank == 2 %}lb-rank-2
+                                    {% else %}lb-rank-3{% endif %}">
+                                    {{ ['1ST','2ND','3RD'][entry.rank - 1] }}
+                                </div>
+
+                                <div class="lb-name">{{ entry.full_name }}</div>
+                                <div class="lb-meta">
+                                    {{ entry.course }} · Yr {{ entry.course_level }}
+                                </div>
+
+                                <div class="d-flex justify-content-center gap-1 flex-wrap">
+                                    <span class="lb-pill lb-pill-sitins">
+                                        💻 {{ entry.total_sitins }}
+                                    </span>
+                                    <span class="lb-pill lb-pill-time">
+                                        ⏱ {{ entry.total_time }}
+                                    </span>
+                                </div>
+
+                            </div>
+                        </div>
+                        {% endfor %}
+
+                        {# Fill empty slots if fewer than 3 students #}
+                        {% if leaderboard|length < 3 %}
+                            {% for i in range(3 - leaderboard|length) %}
+                            <div class="col-4 {% if (leaderboard|length + i) < 2 %}border-end{% endif %}">
+                                <div class="lb-empty d-flex flex-column align-items-center justify-content-center text-center p-3">
+                                    <div style="font-size:1.8rem; color:#d1c4e9; margin-bottom:4px;">🪑</div>
+                                    <div style="font-size:.75rem; color:#bbb;">No data yet</div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% endif %}
+
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        <div style="font-size:2rem;">🏆</div>
+                        <p class="mt-2 mb-0" style="font-size:.85rem;">No sit-in records yet.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            <!-- ══ /LEADERBOARD ══ -->
         </div>
 
-        <!-- Announcement card -->
-        <div class="col-md-6">
+        <!-- Announcement + Rules column -->
+        <div class="col-md-6 d-flex flex-column gap-4">
+
+            <!-- Announcement card -->
             <div class="card">
                 <div class="card-header">📢 Announcement</div>
                 <div class="card-body">
@@ -201,77 +271,28 @@
                     {% endfor %}
                 </div>
             </div>
-        </div>
 
-        <!-- ══ LEADERBOARD ══ -->
-        <div class="col-md-12 mt-4">
-            <div class="card leaderboard-card">
-                <div class="card-header d-flex align-items-center justify-content-between">
-                    <span>🏆 Sit-In Leaderboard — Top 3 Students</span>
-                    <small style="font-size:.8rem; opacity:.85;">Ranked by total sit-ins &amp; accumulated time</small>
-                </div>
-                <div class="card-body p-0">
-                    {% if leaderboard %}
-                    <div class="row g-0">
+            <div class="card">
+                <div class="card-header">📋 Lab Rules &amp; Regulations</div>
+                <div class="card-body">
+                    <form method="POST" action="/post_lab_rules">
+                        <label for="mustRulesText">✅ You MUST (one rule per line)</label>
+                        <textarea id="mustRulesText" name="must_rules" rows="5"
+                                  class="form-control mb-2"
+                                  placeholder="Present your ID&#10;Log in and out properly">{{ current_lab_rules.must_rules if current_lab_rules else '' }}</textarea>
 
-                        {% for entry in leaderboard %}
-                        <div class="col-md-4 {% if not loop.last %}border-end{% endif %}">
-                            <div class="p-4 text-center h-100
-                                {% if entry.rank == 1 %}lb-col-1
-                                {% elif entry.rank == 2 %}lb-col-2
-                                {% else %}lb-col-3{% endif %}"
-                                 style="min-height:210px;">
+                        <label for="mustNotRulesText">🚫 You MUST NOT (one rule per line)</label>
+                        <textarea id="mustNotRulesText" name="must_not_rules" rows="5"
+                                  class="form-control mb-2"
+                                  placeholder="Eat or drink in the lab&#10;Install unauthorized software">{{ current_lab_rules.must_not_rules if current_lab_rules else '' }}</textarea>
 
-                                <div class="lb-medal">{{ entry.medal }}</div>
-
-                                <div class="lb-rank
-                                    {% if entry.rank == 1 %}lb-rank-1
-                                    {% elif entry.rank == 2 %}lb-rank-2
-                                    {% else %}lb-rank-3{% endif %}">
-                                    {{ ['1ST PLACE','2ND PLACE','3RD PLACE'][entry.rank - 1] }}
-                                </div>
-
-                                <div class="lb-name">{{ entry.full_name }}</div>
-                                <div class="lb-meta">
-                                    {{ entry.course }} &nbsp;·&nbsp; Year {{ entry.course_level }}
-                                </div>
-
-                                <div class="d-flex justify-content-center gap-2 flex-wrap">
-                                    <span class="lb-pill lb-pill-sitins">
-                                        💻 {{ entry.total_sitins }} sit-in{{ 's' if entry.total_sitins != 1 else '' }}
-                                    </span>
-                                    <span class="lb-pill lb-pill-time">
-                                        ⏱ {{ entry.total_time }}
-                                    </span>
-                                </div>
-
-                            </div>
-                        </div>
-                        {% endfor %}
-
-                        {# Fill empty slots if fewer than 3 students #}
-                        {% if leaderboard|length < 3 %}
-                            {% for i in range(3 - leaderboard|length) %}
-                            <div class="col-md-4 {% if (leaderboard|length + i) < 2 %}border-end{% endif %}">
-                                <div class="lb-empty d-flex flex-column align-items-center justify-content-center text-center p-4">
-                                    <div style="font-size:2.2rem; color:#d1c4e9; margin-bottom:6px;">🪑</div>
-                                    <div style="font-size:.82rem; color:#bbb;">No data yet</div>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        {% endif %}
-
-                    </div>
-                    {% else %}
-                    <div class="text-center text-muted py-5">
-                        <div style="font-size:2.5rem;">🏆</div>
-                        <p class="mt-2 mb-0">No sit-in records yet. The leaderboard will appear once students start sitting in.</p>
-                    </div>
-                    {% endif %}
+                        <button class="btn btn-submit btn-sm">Save Rules</button>
+                    </form>
                 </div>
             </div>
+
         </div>
-        <!-- ══ /LEADERBOARD ══ -->
+        <!-- /Announcement + Rules column -->
 
     </div>
 </div>
@@ -402,10 +423,10 @@
                         <select id="fbRatingFilter" class="form-control form-control-sm" style="width:110px;">
                             <option value="">All</option>
                             <option value="5">★★★★★ 5</option>
-                            <option value="4">★★★★ 4+</option>
-                            <option value="3">★★★ 3+</option>
-                            <option value="2">★★ 2+</option>
-                            <option value="1">★ 1+</option>
+                            <option value="4">★★★★ 4</option>
+                            <option value="3">★★★ 3</option>
+                            <option value="2">★★ 2</option>
+                            <option value="1">★ 1</option>
                         </select>
                     </div>
                     <div class="ms-auto">
@@ -587,7 +608,7 @@
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Current Sit-in</h5>
+                <h5 class="modal-title">Sit-in Records</h5>
                 <button class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -999,26 +1020,54 @@ function computeDurations() {
 }
 
 // ── Sit-in report filters ──
-function applyReportFilters() {
-    if (!reportsTable) return;
-    const dateVal   = document.getElementById('reportDateFilter').value;
-    const labVal    = document.getElementById('reportLabFilter').value.toLowerCase();
-    const statusVal = document.getElementById('reportStatusFilter').value.toUpperCase();
-    $.fn.dataTable.ext.search = [];
+let dtGlobalFiltersRegistered = false;
+
+function getFbNumericRating(ratingCellText) {
+    const match = (ratingCellText || '').match(/\((\d+)\s*\/\s*5\)/);
+    return match ? parseInt(match[1], 10) : 0;
+}
+
+function registerGlobalTableFilters() {
+    if (dtGlobalFiltersRegistered) return;
+    dtGlobalFiltersRegistered = true;
+
     $.fn.dataTable.ext.search.push(function (settings, data) {
-        if (settings.nTable.id !== 'sitInReportsTable') return true;
-        if (dateVal   && !data[5].trim().includes(dateVal)) return false;
-        if (labVal    && !data[4].toLowerCase().includes(labVal)) return false;
-        if (statusVal && !data[9].toUpperCase().includes(statusVal)) return false;
+        // Sit-in reports filters
+        if (settings.nTable.id === 'sitInReportsTable') {
+            const dateVal = document.getElementById('reportDateFilter')?.value || '';
+            const labVal = (document.getElementById('reportLabFilter')?.value || '').toLowerCase();
+            const statusVal = (document.getElementById('reportStatusFilter')?.value || '').toUpperCase();
+
+            if (dateVal && !data[5].trim().includes(dateVal)) return false;
+            if (labVal && !data[4].toLowerCase().includes(labVal)) return false;
+            if (statusVal && !data[9].toUpperCase().includes(statusVal)) return false;
+        }
+
+        // Feedback reports filters
+        if (settings.nTable.id === 'feedbackReportsTable') {
+            const fbLabVal = (document.getElementById('fbLabFilter')?.value || '').toLowerCase();
+            const ratingVal = parseInt(document.getElementById('fbRatingFilter')?.value, 10) || 0;
+            const rowLab = (data[3] || '').toLowerCase();
+            const rowRating = getFbNumericRating(data[5]);
+
+            if (fbLabVal && !rowLab.includes(fbLabVal)) return false;
+            if (ratingVal && rowRating !== ratingVal) return false;
+        }
+
         return true;
     });
+}
+
+function applyReportFilters() {
+    if (!reportsTable) return;
+    registerGlobalTableFilters();
     reportsTable.draw();
 }
 function clearReportFilters() {
     document.getElementById('reportDateFilter').value = '';
     document.getElementById('reportLabFilter').value  = '';
     document.getElementById('reportStatusFilter').value = '';
-    $.fn.dataTable.ext.search = [];
+    registerGlobalTableFilters();
     if (reportsTable) reportsTable.draw();
 }
 document.getElementById('reportDateFilter').addEventListener('change', applyReportFilters);
@@ -1028,23 +1077,13 @@ document.getElementById('reportStatusFilter').addEventListener('change', applyRe
 // ── Feedback filters ──
 function applyFbFilters() {
     if (!fbTable) return;
-    const labVal    = document.getElementById('fbLabFilter').value.toLowerCase();
-    const ratingVal = parseInt(document.getElementById('fbRatingFilter').value) || 0;
-    $.fn.dataTable.ext.search.push(function (settings, data) {
-        if (settings.nTable.id !== 'feedbackReportsTable') return true;
-        if (labVal && !data[3].toLowerCase().includes(labVal)) return false;
-        if (ratingVal) {
-            const r = parseInt(data[5].replace(/[^0-9]/g, '')) || 0;
-            if (r < ratingVal) return false;
-        }
-        return true;
-    });
+    registerGlobalTableFilters();
     fbTable.draw();
 }
 function clearFbFilters() {
     document.getElementById('fbLabFilter').value    = '';
     document.getElementById('fbRatingFilter').value = '';
-    $.fn.dataTable.ext.search = [];
+    registerGlobalTableFilters();
     if (fbTable) fbTable.draw();
 }
 document.getElementById('fbLabFilter').addEventListener('change', applyFbFilters);

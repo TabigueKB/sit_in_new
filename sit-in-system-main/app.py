@@ -161,6 +161,15 @@ def init_db():
     """)
 
     conn.execute("""
+    CREATE TABLE IF NOT EXISTS lab_rules(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        must_rules TEXT,
+        must_not_rules TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    conn.execute("""
     CREATE TABLE IF NOT EXISTS reservations(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         student_id TEXT,
@@ -472,6 +481,9 @@ def get_admin_data(search=None):
     announcements = conn.execute(
         "SELECT * FROM announcements ORDER BY id DESC"
     ).fetchall()
+    current_lab_rules = conn.execute(
+        "SELECT * FROM lab_rules ORDER BY id DESC LIMIT 1"
+    ).fetchone()
 
     rooms = conn.execute("SELECT * FROM rooms ORDER BY room_number").fetchall()
 
@@ -565,6 +577,7 @@ def get_admin_data(search=None):
         current_sitin_count=current_sitin_count,
         total_sitin_count=total_sitin_count,
         announcements=announcements,
+        current_lab_rules=current_lab_rules,
         rooms=rooms,
         purposes=purposes,
         purpose_counts=purpose_counts,
@@ -775,6 +788,9 @@ def dashboard():
     announcements = conn.execute(
         "SELECT * FROM announcements ORDER BY id DESC"
     ).fetchall()
+    current_lab_rules = conn.execute(
+        "SELECT * FROM lab_rules ORDER BY id DESC LIMIT 1"
+    ).fetchone()
 
     student_data = conn.execute(
         "SELECT remaining_session FROM users WHERE id=?", (session["user_id"],)
@@ -837,6 +853,7 @@ def dashboard():
                            active_sitin=active_sitin,
                            labs=labs,
                            announcements=announcements,
+                           current_lab_rules=current_lab_rules,
                            remaining_session=remaining_session,
                            my_reservations=my_reservations,
                            pending_reservation=pending_reservation,
@@ -1036,6 +1053,28 @@ def post_announcement():
     conn.commit()
     conn.close()
     flash("Announcement posted successfully!", "success")
+    return redirect("/dashboard")
+
+# =========================
+# POST LAB RULES
+# =========================
+@app.route("/post_lab_rules", methods=["POST"])
+def post_lab_rules():
+    if not session.get("is_admin"):
+        return redirect("/")
+
+    must_rules = request.form.get("must_rules", "").strip()
+    must_not_rules = request.form.get("must_not_rules", "").strip()
+
+    conn = get_db()
+    conn.execute(
+        "INSERT INTO lab_rules (must_rules, must_not_rules) VALUES (?, ?)",
+        (must_rules, must_not_rules)
+    )
+    conn.commit()
+    conn.close()
+
+    flash("Lab rules updated successfully!", "success")
     return redirect("/dashboard")
 
 # =========================

@@ -393,6 +393,11 @@
                             <li>Observe silence and proper decorum.</li>
                             <li>Save files to personal storage or cloud.</li>
                             <li>Follow instructions from lab staff or faculty.</li>
+                            {% if current_lab_rules and current_lab_rules.must_rules %}
+                                {% for rule in current_lab_rules.must_rules.split('\n') %}
+                                    {% if rule.strip() %}<li>{{ rule.strip() }}</li>{% endif %}
+                                {% endfor %}
+                            {% endif %}
                         </ul>
                         <hr class="my-2">
                         <p class="fw-bold mb-2" style="color:#dc3545; font-size:.82rem;">🚫 You MUST NOT</p>
@@ -406,6 +411,11 @@
                             <li>Tamper with hardware, cables, or peripherals.</li>
                             <li>Leave your workstation unattended without logging out.</li>
                             <li>Make noise or disturb others in the laboratory.</li>
+                            {% if current_lab_rules and current_lab_rules.must_not_rules %}
+                                {% for rule in current_lab_rules.must_not_rules.split('\n') %}
+                                    {% if rule.strip() %}<li>{{ rule.strip() }}</li>{% endif %}
+                                {% endfor %}
+                            {% endif %}
                         </ul>
                         <div class="alert alert-warning py-2 mb-0" style="font-size:.78rem;">
                             ⚠️ Violations may result in loss of sit-in privileges or disciplinary action.
