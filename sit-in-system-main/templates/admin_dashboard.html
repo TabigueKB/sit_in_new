@@ -67,6 +67,12 @@
         #captureCanvas { display: none; }
         .camera-controls { display: none; gap: 8px; justify-content: center; margin-top: 8px; }
         .navbar-profile-pic { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid #fff; margin-right: 6px; cursor: pointer; }
+        .student-list-avatar { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 1px solid #d9cde8; }
+        .student-list-avatar-fallback {
+            width: 28px; height: 28px; border-radius: 50%;
+            display: inline-flex; align-items: center; justify-content: center;
+            background: #f0e6ff; color: #5e3a8c; font-size: .8rem; border: 1px solid #d9cde8;
+        }
 
         /* Password toggle */
         .pw-wrap { position: relative; }
@@ -544,7 +550,17 @@
                             {% for s in students %}
                             <tr>
                                 <td class="text-muted">{{ s.student_id }}</td>
-                                <td>{{ s.first_name }} {{ s.middle_name }} {{ s.last_name }}</td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        {% if s.profile_pic %}
+                                            <img src="{{ url_for('static', filename='uploads/' + s.profile_pic) }}"
+                                                 alt="Student Photo" class="student-list-avatar">
+                                        {% else %}
+                                            <span class="student-list-avatar-fallback">👤</span>
+                                        {% endif %}
+                                        <span>{{ s.first_name }} {{ s.middle_name }} {{ s.last_name }}</span>
+                                    </div>
+                                </td>
                                 <td>{{ s.course_level }}</td>
                                 <td>{{ s.course }}</td>
                                 <td>{{ s.remaining_session if s.remaining_session else 30 }}</td>

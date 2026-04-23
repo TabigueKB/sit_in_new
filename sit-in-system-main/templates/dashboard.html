@@ -54,6 +54,7 @@
         .sidebar-rules ul { padding-left:1.1rem; margin-bottom:0; }
         .sidebar-rules li  { margin-bottom:5px; }
         .sidebar-announcements .card-body { font-size:.88rem; max-height:280px; overflow-y:auto; }
+        .navbar-profile-pic { width:32px; height:32px; border-radius:50%; object-fit:cover; border:2px solid #fff; }
 
         /* Two-column layout */
         .dashboard-layout { display:grid; grid-template-columns:1fr 300px; gap:24px; align-items:start; }
@@ -137,9 +138,17 @@
     <img src="{{ url_for('static', filename='images/logo.png') }}" width="40">
     <span class="navbar-brand ms-2">CCS Sit-In Monitoring System</span>
     <div class="ms-auto d-flex align-items-center">
-        <span class="text-white me-3">Welcome, {{ user.first_name }}</span>
         <div class="dropdown">
-            <button class="btn btn-warning btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">Actions</button>
+            <button class="btn btn-warning btn-sm dropdown-toggle d-flex align-items-center gap-2"
+                    type="button" data-bs-toggle="dropdown">
+                {% if user.profile_pic %}
+                    <img src="{{ url_for('static', filename='uploads/' + user.profile_pic) }}"
+                         class="navbar-profile-pic" alt="Profile">
+                {% else %}
+                    <span style="font-size:1rem;">👤</span>
+                {% endif %}
+                {{ user.first_name }}
+            </button>
             <ul class="dropdown-menu dropdown-menu-end">
                 <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#editProfileModal">Edit Profile</a></li>
                 <li><hr class="dropdown-divider"></li>
