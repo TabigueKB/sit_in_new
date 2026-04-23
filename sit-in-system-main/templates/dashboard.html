@@ -305,7 +305,13 @@
 
             <!-- RECENT SESSIONS -->
             <div class="card recent-sessions-card mb-4">
-                <div class="card-header d-flex align-items-center gap-2">🕒 Recent Sit-In Sessions</div>
+                <div class="card-header d-flex justify-content-between align-items-center"
+                     data-bs-toggle="collapse" data-bs-target="#recentSessionsBody"
+                     style="cursor:pointer;">
+                    <span>🕒 Recent Sit-In Sessions</span>
+                    <span style="font-size:.8rem; opacity:.85;">▾</span>
+                </div>
+                <div class="collapse show" id="recentSessionsBody">
                 <div class="card-body p-0">
                     {% if recent_sessions %}
                     <div class="table-responsive">
@@ -356,6 +362,7 @@
                     </div>
                     {% endif %}
                 </div>
+                </div>
             </div>
 
         </div><!-- /dashboard-main -->
@@ -368,6 +375,9 @@
                 <div class="card-body">
                     {% for ann in announcements %}
                         <p class="mb-1" style="font-size:.88rem;">{{ ann.text }}</p>
+                        <small class="text-muted d-block" style="font-size:.75rem;">
+                            Posted: {{ (ann.created_at | string)[:16] if ann.created_at else 'Date unavailable' }}
+                        </small>
                         {% if not loop.last %}<hr class="my-2">{% endif %}
                     {% endfor %}
                 </div>

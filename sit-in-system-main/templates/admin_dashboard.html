@@ -255,7 +255,14 @@
 
             <!-- Announcement card -->
             <div class="card">
-                <div class="card-header">📢 Announcement</div>
+                <div class="card-header d-flex justify-content-between align-items-center"
+                     style="cursor:pointer;"
+                     data-bs-toggle="collapse" data-bs-target="#adminAnnouncementBody"
+                     aria-expanded="true" aria-controls="adminAnnouncementBody">
+                    <span>📢 Announcement</span>
+                    <span style="font-size:.8rem; opacity:.85;">▾</span>
+                </div>
+                <div class="collapse show" id="adminAnnouncementBody">
                 <div class="card-body">
                     <form method="POST" action="/post_announcement">
                         <label for="announcementText">New Announcement</label>
@@ -270,10 +277,18 @@
                         {% if not loop.last %}<hr>{% endif %}
                     {% endfor %}
                 </div>
+                </div>
             </div>
 
             <div class="card">
-                <div class="card-header">📋 Lab Rules &amp; Regulations</div>
+                <div class="card-header d-flex justify-content-between align-items-center"
+                     style="cursor:pointer;"
+                     data-bs-toggle="collapse" data-bs-target="#adminLabRulesBody"
+                     aria-expanded="true" aria-controls="adminLabRulesBody">
+                    <span>📋 Lab Rules &amp; Regulations</span>
+                    <span style="font-size:.8rem; opacity:.85;">▾</span>
+                </div>
+                <div class="collapse show" id="adminLabRulesBody">
                 <div class="card-body">
                     <form method="POST" action="/post_lab_rules">
                         <label for="mustRulesText">✅ You MUST (one rule per line)</label>
@@ -288,6 +303,7 @@
 
                         <button class="btn btn-submit btn-sm">Save Rules</button>
                     </form>
+                </div>
                 </div>
             </div>
 

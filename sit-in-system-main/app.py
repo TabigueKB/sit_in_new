@@ -466,9 +466,11 @@ def get_admin_data(search=None):
     else:
         students = conn.execute("SELECT * FROM users WHERE is_admin=0").fetchall()
 
-    sitin_records = conn.execute(
-        "SELECT * FROM sitin_records ORDER BY time_in DESC"
-    ).fetchall()
+    sitin_records = conn.execute("""
+        SELECT student_id, name, purpose, lab, session, time_in, time_out, status
+        FROM sitin_records
+        ORDER BY time_in DESC
+    """).fetchall()
 
     current_sitin_count = conn.execute(
         "SELECT COUNT(*) FROM sitin_records WHERE status='IN'"
@@ -1422,8 +1424,19 @@ def export_sitin_report():
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
 
+    uc_logo_path = os.path.join(app.root_path, "static", "images", "uclogo.png")
+    ccs_logo_path = os.path.join(app.root_path, "static", "images", "logo.png")
+
+    if os.path.exists(uc_logo_path):
+        pdf.image(uc_logo_path, x=10, y=8, w=22)
+    if os.path.exists(ccs_logo_path):
+        pdf.image(ccs_logo_path, x=265, y=8, w=22)
+
+    pdf.set_y(8)
     pdf.set_font("Arial", "B", 16)
-    pdf.cell(0, 10, "University of Cebu Sit-in Report", ln=1, align="C")
+    pdf.cell(0, 8, "University Of Cebu", ln=1, align="C")
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(0, 8, "CCS Sit-In Report", ln=1, align="C")
     pdf.set_font("Arial", "", 10)
     pdf.cell(0, 8, datetime.now().strftime("Generated: %B %d, %Y %I:%M %p"), ln=1, align="C")
     pdf.ln(4)
@@ -1443,20 +1456,21 @@ def export_sitin_report():
     pdf.set_font("Arial", "", 8)
 
     for index, record in enumerate(sitin_records, start=1):
-        student_id    = record[1]
-        name          = record[2] or ""
-        purpose       = record[3] or ""
-        lab           = record[4] or ""
-        session_count = str(record[5]) if record[5] is not None else ""
-        time_in       = record[7] or ""
-        time_out      = record[8] or ""
-        status        = record[9] or ""
+        student_id    = record["student_id"]
+        name          = record["name"] or ""
+        purpose       = record["purpose"] or ""
+        lab           = record["lab"] or ""
+        session_count = str(record["session"]) if record["session"] is not None else ""
+        time_in       = record["time_in"] or ""
+        time_out      = record["time_out"] or ""
+        raw_status    = (record["status"] or "").upper()
+        status        = "Done" if raw_status == "OUT" else ("In Progress" if raw_status == "IN" else raw_status.title())
 
         duration = ""
         if time_in and time_out:
             try:
-                dt_in  = datetime.fromisoformat(time_in)
-                dt_out = datetime.fromisoformat(time_out)
+                dt_in  = datetime.fromisoformat(str(time_in))
+                dt_out = datetime.fromisoformat(str(time_out))
                 duration = str(dt_out - dt_in).split(".")[0]
             except Exception:
                 duration = ""
