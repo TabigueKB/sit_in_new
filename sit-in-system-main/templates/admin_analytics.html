@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Analytics — CCS Admin</title>
+    <link rel="icon" href="{{ url_for('static', filename='images/logo.png') }}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background: #f5f7fb; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
+        .navbar { background-color: #5e3a8c; }
+        .nav-link, .navbar-brand { color: white !important; font-size: 14px; }
+
+        .card {
+            border-radius: 16px;
+            border: none;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+        .analytics-card .card-header {
+            background: linear-gradient(135deg, #5e3a8c 0%, #6f4ba3 100%);
+            color: white;
+            font-weight: 700;
+            padding: 14px 20px;
+        }
+        .analytics-stat {
+            background: #faf8fd;
+            border: 1px solid #e8def7;
+            border-radius: 12px;
+            padding: 14px 16px;
+            height: 100%;
+        }
+        .analytics-stat .num {
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: #3d2466;
+            line-height: 1.2;
+        }
+        .analytics-stat .lbl {
+            font-size: .72rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            color: #7a6a91;
+            margin-top: 6px;
+        }
+        .analytics-res-badges span {
+            display: inline-block;
+            font-size: .75rem;
+            padding: 3px 10px;
+            border-radius: 999px;
+            margin: 2px 6px 2px 0;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg px-4">
+    <span class="navbar-brand fw-bold">📈 Sit-In Analytics</span>
+    <div class="ms-auto">
+        <a href="/dashboard" class="nav-link">← Back to Admin Dashboard</a>
+    </div>
+</nav>
+
+<div class="container mt-4 pb-5">
+    <div class="card analytics-card shadow-sm">
+        <div class="card-header d-flex align-items-center gap-2 flex-wrap">
+            <span>Lab usage &amp; reporting</span>
+        </div>
+        <div class="card-body p-4">
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-lg-3">
+                    <div class="analytics-stat">
+                        <div class="num">{{ admin_analytics.avg_session_minutes }}</div>
+                        <div class="lbl">Avg. session length (min)</div>
+                        <div class="small text-muted mt-1" style="font-size:.72rem;">Completed sit-ins only</div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="analytics-stat">
+                        <div class="num">{% if admin_analytics.top_lab_name %}Lab {{ admin_analytics.top_lab_name }}{% else %}—{% endif %}</div>
+                        <div class="lbl">Busiest lab (all time)</div>
+                        <div class="small text-muted mt-1" style="font-size:.72rem;">{{ admin_analytics.top_lab_count }} sit-ins recorded</div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="analytics-stat">
+                        <div class="num">{{ admin_analytics.sitins_last_30_days }}</div>
+                        <div class="lbl">Sit-ins (last 30 days)</div>
+                        <div class="small text-muted mt-1" style="font-size:.72rem;">By check-in time</div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="analytics-stat">
+                        <div class="num">{% if admin_analytics.reservation_approval_pct is not none %}{{ admin_analytics.reservation_approval_pct }}%{% else %}—{% endif %}</div>
+                        <div class="lbl">Reservation approval rate</div>
+                        <div class="small text-muted mt-1" style="font-size:.72rem;">Approved ÷ (approved + declined)</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4 align-items-start">
+                <div class="col-lg-6">
+                    <h6 class="fw-bold mb-2" style="color:#4a2d70;font-size:.9rem;">Sit-ins by lab</h6>
+                    <p class="small text-muted mb-2">Which rooms accumulate the most sit-in records (top labs).</p>
+                    {% if admin_analytics.lab_chart_labels|length == 0 %}
+                    <p class="text-muted small mb-0">No sit-in records yet. The chart will show once students have sit-in history.</p>
+                    {% else %}
+                    <div style="max-height:280px;">
+                        <canvas id="analyticsLabChart"></canvas>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="col-lg-6">
+                    <h6 class="fw-bold mb-2" style="color:#4a2d70;font-size:.9rem;">Reservations &amp; feedback</h6>
+                    <p class="small text-muted mb-2">Counts by reservation status; star ratings from submitted feedback.</p>
+                    <div class="analytics-res-badges mb-3">
+                        {% set rc = admin_analytics.reservation_counts %}
+                        <span class="bg-warning bg-opacity-25 text-dark">Pending {{ rc['PENDING']|default(0) }}</span>
+                        <span class="bg-success bg-opacity-25 text-success">Approved {{ rc['APPROVED']|default(0) }}</span>
+                        <span class="bg-danger bg-opacity-25 text-danger">Declined {{ rc['DECLINED']|default(0) }}</span>
+                        <span class="bg-secondary bg-opacity-25 text-secondary">Cancelled {{ rc['CANCELLED']|default(0) }}</span>
+                    </div>
+                    <div class="analytics-stat d-inline-block w-100">
+                        <div class="num" style="font-size:1.2rem;">{{ admin_analytics.avg_rating_display }} / 5</div>
+                        <div class="lbl">Average feedback rating</div>
+                        <div class="small text-muted mt-1" style="font-size:.72rem;">{{ admin_analytics.feedback_submissions }} submission(s)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+(function () {
+    var labChartLabels = {{ admin_analytics.lab_chart_labels | tojson }};
+    var labChartCounts = {{ admin_analytics.lab_chart_counts | tojson }};
+    var labCanvas = document.getElementById('analyticsLabChart');
+    if (labCanvas && labChartLabels.length) {
+        new Chart(labCanvas, {
+            type: 'bar',
+            data: {
+                labels: labChartLabels,
+                datasets: [{
+                    label: 'Sit-ins',
+                    data: labChartCounts,
+                    backgroundColor: 'rgba(94,58,140,0.75)',
+                    borderColor: 'rgba(94,58,140,1)',
+                    borderWidth: 2,
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: function (ctx) { return ' ' + ctx.parsed.y + ' sit-ins'; } } }
+                },
+                scales: {
+                    y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 }, title: { display: true, text: 'Count' } },
+                    x: { title: { display: true, text: 'Laboratory' } }
+                }
+            }
+        });
+    }
+})();
+</script>
+</body>
+</html>

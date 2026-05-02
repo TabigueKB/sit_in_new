@@ -12,6 +12,7 @@
         .profile-pic-preview { width:100px; height:100px; border-radius:50%; object-fit:cover; border:3px solid #5e3a8c; background:#f0e6ff; display:block; }
         .profile-pic-placeholder { width:100px; height:100px; border-radius:50%; background:#f0e6ff; border:3px solid #5e3a8c; display:flex; align-items:center; justify-content:center; font-size:2.5rem; color:#5e3a8c; cursor:pointer; }
         .profile-pic-actions { display:flex; gap:8px; justify-content:center; margin-bottom:8px; }
+        .navbar-profile-pic { width:32px; height:32px; border-radius:50%; object-fit:cover; border:2px solid #fff; }
         #cameraStream { width:100%; border-radius:8px; display:none; }
         #captureCanvas { display:none; }
         .camera-controls { display:none; gap:8px; justify-content:center; margin-top:8px; }
@@ -25,6 +26,12 @@
         /* Lab mini-cards */
         .lab-mini-card { border-radius:10px; padding:10px 14px; display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; border:1px solid #e0d0f7; background:#faf7ff; }
         .lab-mini-card.full { background:#fff5f5; border-color:#f5c6cb; }
+
+        /* Sit-in summary */
+        .sitin-summary-card .card-header { background-color:#5e3a8c; color:white; font-weight:600; }
+        .sitin-summary-stat { text-align:center; padding:14px 10px; border-radius:10px; background:#faf7ff; border:1px solid #e8def9; height:100%; }
+        .sitin-summary-stat .value { font-size:1.35rem; font-weight:700; color:#3d2466; line-height:1.2; }
+        .sitin-summary-stat .label { font-size:.72rem; color:#6d5c8a; font-weight:600; text-transform:uppercase; letter-spacing:.04em; margin-top:6px; }
 
         /* Recent Sessions */
         .recent-sessions-card .card-header { background-color:#5e3a8c; color:white; font-weight:600; }
@@ -224,11 +231,44 @@
             </div>
             {% endif %}
 
+            <!-- USER SIT-IN SUMMARY -->
+            <div class="card sitin-summary-card mb-4">
+                <div class="card-header d-flex align-items-center gap-2">📊 User Sit-In Summary</div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-6 col-lg-3">
+                            <div class="sitin-summary-stat">
+                                <div class="value">{{ sitin_summary.total_hours_display }}</div>
+                                <div class="label">Total sit-in hours</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-lg-3">
+                            <div class="sitin-summary-stat">
+                                <div class="value">{{ sitin_summary.session_count }}</div>
+                                <div class="label">Sessions used</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-lg-3">
+                            <div class="sitin-summary-stat">
+                                <div class="value" style="font-size:1.15rem;">{{ sitin_summary.avg_duration_display }}</div>
+                                <div class="label">Avg. session duration</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-lg-3">
+                            <div class="sitin-summary-stat">
+                                <div class="value" style="font-size:1.15rem;">{{ sitin_summary.longest_duration_display }}</div>
+                                <div class="label">Longest session</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- RESERVATION SECTION -->
             <div class="card reservation-card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <span>🗓️ Reserve a Sit-In</span>
-                    {% if not active_sitin and remaining_session > 0 and not pending_reservation %}
+                    {% if not active_sitin and remaining_session > 0 and not pending_reservation and user.reservation_enabled != 0 %}
                     <button class="btn btn-sm btn-light fw-semibold"
                             data-bs-toggle="modal" data-bs-target="#reserveModal">
                         + New Reservation
@@ -236,6 +276,13 @@
                     {% endif %}
                 </div>
                 <div class="card-body">
+
+                    {% if user.reservation_enabled == 0 %}
+                    <div class="alert alert-danger mb-3" style="font-size:.9rem;">
+                        <strong>Reservations are disabled</strong> for your account by an administrator.
+                        You can still view your reservation history below. Contact the lab office if you need this restored.
+                    </div>
+                    {% endif %}
 
                     {% if pending_reservation %}
                     <div class="alert pending-banner d-flex justify-content-between align-items-center mb-3">
@@ -327,8 +374,8 @@
                         <table class="table table-hover align-middle mb-0">
                             <thead class="table-light">
                                 <tr>
-                                    <th>#</th><th>Lab</th><th>Purpose</th>
-                                    <th>Time In</th><th>Time Out</th><th>Status</th><th>Feedback</th>
+                                    <th>#</th><th>Lab</th><th>PC No.</th><th>Purpose</th>
+                                    <th>Time In</th><th>Time Out</th><th>Duration</th><th>Status</th><th>Feedback</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -336,9 +383,11 @@
                                 <tr>
                                     <td class="text-muted" style="font-size:.85rem;">{{ loop.index }}</td>
                                     <td><strong>Lab {{ s.lab }}</strong></td>
+                                    <td style="font-size:.85rem;">{% if s.pc_number is not none %}<strong>PC {{ s.pc_number }}</strong>{% else %}—{% endif %}</td>
                                     <td>{{ s.purpose }}</td>
                                     <td style="font-size:.85rem;">{{ s.time_in }}</td>
                                     <td style="font-size:.85rem;">{{ s.time_out if s.time_out else '—' }}</td>
+                                    <td style="font-size:.85rem;">{{ s.duration_display }}</td>
                                     <td>
                                         {% if s.time_out %}
                                             <span class="session-badge-done">Done</span>
@@ -609,9 +658,9 @@
                         <input type="radio" name="rating" id="star2" value="2"><label for="star2" title="Poor">★</label>
                         <input type="radio" name="rating" id="star1" value="1"><label for="star1" title="Terrible">★</label>
                     </div>
-                    <label class="form-label fw-semibold">Your Feedback</label>
+                    <label class="form-label fw-semibold">Your Feedback <span class="text-muted fw-normal">(optional)</span></label>
                     <textarea name="feedback_text" id="feedbackText" class="form-control" rows="4"
-                              maxlength="500" placeholder="Share your experience in this lab room…" required></textarea>
+                              maxlength="500" placeholder="Share your experience in this lab room…"></textarea>
                     <div class="d-flex justify-content-end mt-1">
                         <small class="text-muted"><span id="charCount">0</span>/500</small>
                     </div>

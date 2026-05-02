@@ -19,7 +19,7 @@ app.secret_key = "secretkey"
 # EMAIL CONFIG
 # =========================
 MAIL_SENDER  = "kervytabigue69@gmail.com"
-MAIL_PASSWORD = "sloekdoouxlyzyjj"
+MAIL_PASSWORD = "ckbxjfryrbruejqn"
 
 def send_email_async(to_email, subject, html_body):
     def _send():
@@ -89,11 +89,20 @@ def notify_reservation(student_email, student_name, action, res):
 # PROFILE PIC CONFIG
 # =========================
 UPLOAD_FOLDER = os.path.join("static", "uploads")
+SOFTWARE_UPLOAD_FOLDER = os.path.join(UPLOAD_FOLDER, "software")
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
+ALLOWED_SOFTWARE_EXTENSIONS = {
+    "exe", "msi", "zip", "rar", "7z", "iso",
+    "pdf", "txt", "doc", "docx",
+}
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(SOFTWARE_UPLOAD_FOLDER, exist_ok=True)
 
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def allowed_software_file(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_SOFTWARE_EXTENSIONS
 
 # =========================
 # DATABASE CONNECTION
@@ -211,6 +220,19 @@ def init_db():
     )
     """)
 
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS software_uploads(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        description TEXT,
+        file_name TEXT NOT NULL,
+        stored_name TEXT NOT NULL UNIQUE,
+        file_size_bytes INTEGER DEFAULT 0,
+        uploaded_by INTEGER,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
     rooms = [
         ('524', 50), ('525', 50), ('526', 50), ('527', 50), ('528', 50),
         ('529', 50), ('530', 50), ('530A', 50), ('530B', 50), ('530C', 50)
@@ -236,6 +258,8 @@ def init_db():
         "ALTER TABLE pc_availability ADD COLUMN time_start TEXT",
         "ALTER TABLE pc_availability ADD COLUMN time_end TEXT",
         "ALTER TABLE reservations ADD COLUMN seen_by_student INTEGER DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN reservation_enabled INTEGER DEFAULT 1",
+        "ALTER TABLE users ADD COLUMN preferred_pc INTEGER",
     ]
     for sql in migrations:
         try:
@@ -281,6 +305,107 @@ def save_profile_pic(file=None, base64_data=None, old_pic=None):
             filename = None
 
     return filename
+
+# =========================
+# HELPER: sit-in session duration for student dashboard
+# =========================
+def _parse_sitin_timestamp(value):
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, (bytes, bytearray)):
+        try:
+            value = value.decode("utf-8")
+        except Exception:
+            return None
+    s = str(value).strip()
+    if not s:
+        return None
+    # Strip sub-second and timezone tails for ISO parse (len(fmt) is NOT input length — was a bug)
+    iso = s.replace("Z", "+00:00")
+    if "." in iso and ("T" in iso or (len(iso) > 10 and iso[10] == " ")):
+        iso = iso.split(".")[0]
+    if " " in iso and "T" not in iso[:11]:
+        iso = iso.replace(" ", "T", 1)
+    try:
+        return datetime.fromisoformat(iso)
+    except ValueError:
+        pass
+    for fmt, n in (("%Y-%m-%d %H:%M:%S", 19), ("%Y-%m-%d %H:%M", 16)):
+        try:
+            return datetime.strptime(s[:n], fmt)
+        except ValueError:
+            continue
+    return None
+
+
+def _format_sitin_duration(total_seconds, ongoing=False):
+    if total_seconds < 0:
+        total_seconds = 0
+    secs = int(total_seconds)
+    if secs < 60 and secs > 0:
+        text = f"{secs}s"
+    else:
+        hours, rem = divmod(secs, 3600)
+        minutes, _ = divmod(rem, 60)
+        parts = []
+        if hours:
+            parts.append(f"{hours}h")
+        parts.append(f"{minutes}m")
+        text = " ".join(parts)
+    if ongoing:
+        return f"{text} (ongoing)"
+    return text
+
+
+def _build_sitin_summary(student_id, conn):
+    """Aggregate sit-in stats for the student dashboard (all records, not only recent)."""
+    rows = conn.execute(
+        """
+        SELECT time_in, time_out, status
+        FROM sitin_records
+        WHERE student_id=?
+        """,
+        (student_id,),
+    ).fetchall()
+
+    now = datetime.now()
+    durations = []
+    for r in rows:
+        tin = _parse_sitin_timestamp(r["time_in"])
+        if not tin:
+            durations.append(0.0)
+            continue
+        tout = _parse_sitin_timestamp(r["time_out"])
+        if tout:
+            sec = (tout - tin).total_seconds()
+        elif (r["status"] or "").upper() == "IN":
+            sec = (now - tin).total_seconds()
+        else:
+            sec = 0.0
+        durations.append(max(0.0, sec))
+
+    n = len(durations)
+    if n == 0:
+        return {
+            "session_count": 0,
+            "total_hours_display": "—",
+            "avg_duration_display": "—",
+            "longest_duration_display": "—",
+        }
+
+    total_sec = sum(durations)
+    longest_sec = max(durations)
+    avg_sec = total_sec / n
+
+    return {
+        "session_count": n,
+        "total_hours_display": f"{total_sec / 3600:.1f} hrs",
+        "avg_duration_display": _format_sitin_duration(avg_sec, ongoing=False),
+        "longest_duration_display": _format_sitin_duration(longest_sec, ongoing=False),
+    }
+
 
 # =========================
 # HELPER: parse and format PC availability selections
@@ -445,6 +570,65 @@ def get_available_pcs_for_slot(conn, room, date, time_slot):
     return available
 
 
+def build_admin_analytics(conn):
+    """Summary metrics + chart series for the admin analytics page."""
+    avg_sess_row = conn.execute("""
+        SELECT AVG(CAST((strftime('%s', time_out) - strftime('%s', time_in)) AS REAL) / 60.0)
+        FROM sitin_records
+        WHERE time_out IS NOT NULL AND time_in IS NOT NULL
+    """).fetchone()
+    avg_session_minutes = round(float(avg_sess_row[0] or 0), 1)
+
+    top_lab_row = conn.execute("""
+        SELECT lab, COUNT(*) AS c FROM sitin_records
+        GROUP BY lab ORDER BY c DESC LIMIT 1
+    """).fetchone()
+    top_lab_name = top_lab_row["lab"] if top_lab_row else None
+    top_lab_count = int(top_lab_row["c"]) if top_lab_row else 0
+
+    sitins_30d = int(
+        conn.execute("""
+            SELECT COUNT(*) FROM sitin_records
+            WHERE datetime(time_in) >= datetime('now', '-30 days')
+        """).fetchone()[0]
+    )
+
+    res_stat_rows = conn.execute(
+        "SELECT status, COUNT(*) AS n FROM reservations GROUP BY status"
+    ).fetchall()
+    reservation_counts = {r["status"]: int(r["n"]) for r in res_stat_rows}
+    _ap = reservation_counts.get("APPROVED", 0)
+    _de = reservation_counts.get("DECLINED", 0)
+    reservation_approval_pct = (
+        round(100.0 * _ap / (_ap + _de), 1) if (_ap + _de) > 0 else None
+    )
+
+    avg_rating = conn.execute(
+        "SELECT ROUND(AVG(rating), 2) FROM feedback"
+    ).fetchone()[0] or 0
+    feedback_n = int(conn.execute("SELECT COUNT(*) FROM feedback").fetchone()[0])
+
+    lab_dist = conn.execute("""
+        SELECT lab, COUNT(*) AS c FROM sitin_records
+        GROUP BY lab ORDER BY c DESC LIMIT 12
+    """).fetchall()
+    lab_chart_labels = [f"Lab {r['lab']}" for r in lab_dist]
+    lab_chart_counts = [int(r["c"]) for r in lab_dist]
+
+    return {
+        "avg_session_minutes": avg_session_minutes,
+        "top_lab_name": top_lab_name,
+        "top_lab_count": top_lab_count,
+        "sitins_last_30_days": sitins_30d,
+        "reservation_approval_pct": reservation_approval_pct,
+        "reservation_counts": reservation_counts,
+        "feedback_submissions": feedback_n,
+        "avg_rating_display": float(avg_rating) if avg_rating else 0.0,
+        "lab_chart_labels": lab_chart_labels,
+        "lab_chart_counts": lab_chart_counts,
+    }
+
+
 # =========================
 # HELPER: load admin dashboard data
 # =========================
@@ -513,9 +697,13 @@ def get_admin_data(search=None):
         ORDER BY f.submitted_at DESC
     """).fetchall()
 
-    avg_rating = conn.execute(
-        "SELECT ROUND(AVG(rating), 2) FROM feedback"
-    ).fetchone()[0] or 0
+    software_uploads = conn.execute("""
+        SELECT su.*, u.first_name, u.last_name
+        FROM software_uploads su
+        LEFT JOIN users u ON u.id = su.uploaded_by
+        ORDER BY su.created_at DESC
+        LIMIT 30
+    """).fetchall()
 
     pc_availabilities = conn.execute(
         "SELECT * FROM pc_availability ORDER BY date DESC, room_number"
@@ -570,6 +758,10 @@ def get_admin_data(search=None):
             "total_time":   fmt_duration(row["total_seconds"]),
         })
 
+    avg_rating = conn.execute(
+        "SELECT ROUND(AVG(rating), 2) FROM feedback"
+    ).fetchone()[0] or 0
+
     conn.close()
 
     return dict(
@@ -590,7 +782,9 @@ def get_admin_data(search=None):
         avg_rating=avg_rating,
         pc_availabilities=pc_availabilities,
         leaderboard=leaderboard,
+        software_uploads=software_uploads,
     )
+
 
 # =========================
 # API: Available PCs for a slot
@@ -723,6 +917,19 @@ def delete_pc_availability(avail_id):
 
 
 # =========================
+# ADMIN ANALYTICS PAGE (separate window, like PC Availability)
+# =========================
+@app.route("/admin_analytics")
+def admin_analytics_page():
+    if not session.get("is_admin"):
+        return redirect("/")
+    conn = get_db()
+    admin_analytics = build_admin_analytics(conn)
+    conn.close()
+    return render_template("admin_analytics.html", admin_analytics=admin_analytics)
+
+
+# =========================
 # LOGIN
 # =========================
 @app.route("/")
@@ -845,8 +1052,23 @@ def dashboard():
         LIMIT 20
     """, (user["student_id"],)).fetchall()
 
-    # Convert to dicts so templates can access has_feedback
-    recent_sessions = [dict(r) for r in recent_rows_raw]
+    # Convert to dicts; add human-readable duration
+    recent_sessions = []
+    for r in recent_rows_raw:
+        d = dict(r)
+        tin = _parse_sitin_timestamp(d.get("time_in"))
+        tout = _parse_sitin_timestamp(d.get("time_out"))
+        if tin:
+            end = tout if tout else datetime.now()
+            ongoing = tout is None and (d.get("status") or "").upper() == "IN"
+            d["duration_display"] = _format_sitin_duration(
+                (end - tin).total_seconds(), ongoing=ongoing
+            )
+        else:
+            d["duration_display"] = "—"
+        recent_sessions.append(d)
+
+    sitin_summary = _build_sitin_summary(user["student_id"], conn)
 
     conn.close()
 
@@ -859,7 +1081,8 @@ def dashboard():
                            remaining_session=remaining_session,
                            my_reservations=my_reservations,
                            pending_reservation=pending_reservation,
-                           recent_sessions=recent_sessions)
+                           recent_sessions=recent_sessions,
+                           sitin_summary=sitin_summary)
 
 # =========================
 # SEARCH STUDENT
@@ -998,8 +1221,19 @@ def edit_student():
         return redirect("/")
 
     conn = get_db()
+    pref_raw = request.form.get("preferred_pc", "").strip()
+    preferred_pc = None
+    if pref_raw:
+        try:
+            n = int(pref_raw)
+            if 1 <= n <= 50:
+                preferred_pc = n
+        except ValueError:
+            pass
+
     conn.execute("""
-        UPDATE users SET first_name=?, last_name=?, course=?, course_level=?, email=?
+        UPDATE users SET first_name=?, last_name=?, course=?, course_level=?, email=?,
+        preferred_pc=?
         WHERE student_id=?
     """, (
         request.form["first_name"],
@@ -1007,6 +1241,7 @@ def edit_student():
         request.form["course"],
         request.form["course_level"],
         request.form.get("email", ""),
+        preferred_pc,
         request.form["student_id"]
     ))
     conn.commit()
@@ -1027,6 +1262,37 @@ def delete_student(student_id):
     conn.close()
     flash("Student deleted successfully!", "success")
     return redirect("/dashboard")
+
+
+@app.route("/admin_toggle_student_reservations/<student_id>", methods=["POST"])
+def admin_toggle_student_reservations(student_id):
+    if not session.get("is_admin"):
+        return redirect("/")
+    conn = get_db()
+    row = conn.execute(
+        "SELECT is_admin, reservation_enabled FROM users WHERE student_id=?",
+        (student_id,),
+    ).fetchone()
+    if not row or row["is_admin"]:
+        conn.close()
+        flash("Student not found.", "error")
+        return redirect("/dashboard")
+    cur = row["reservation_enabled"]
+    if cur is None:
+        cur = 1
+    new_val = 0 if cur else 1
+    conn.execute(
+        "UPDATE users SET reservation_enabled=? WHERE student_id=? AND is_admin=0",
+        (new_val, student_id),
+    )
+    conn.commit()
+    conn.close()
+    if new_val:
+        flash(f"Reservations enabled for student {student_id}.", "success")
+    else:
+        flash(f"Reservations disabled for student {student_id}.", "warning")
+    return redirect("/dashboard")
+
 
 # =========================
 # RESET ALL SESSIONS
@@ -1077,6 +1343,60 @@ def post_lab_rules():
     conn.close()
 
     flash("Lab rules updated successfully!", "success")
+    return redirect("/dashboard")
+
+
+# =========================
+# ADMIN: SOFTWARE / APP UPLOAD
+# =========================
+@app.route("/upload_software", methods=["POST"])
+def upload_software():
+    if not session.get("is_admin"):
+        return redirect("/")
+
+    title = (request.form.get("title") or "").strip()
+    description = (request.form.get("description") or "").strip()
+    file = request.files.get("software_file")
+
+    if not title:
+        flash("Software title is required.", "warning")
+        return redirect("/dashboard")
+    if not file or not file.filename:
+        flash("Please choose a file to upload.", "warning")
+        return redirect("/dashboard")
+    if not allowed_software_file(file.filename):
+        flash("Unsupported file type. Allowed: exe, msi, zip, rar, 7z, iso, pdf, txt, doc, docx.", "warning")
+        return redirect("/dashboard")
+
+    safe_original = secure_filename(file.filename)
+    ext = safe_original.rsplit(".", 1)[1].lower()
+    stored_name = f"{uuid.uuid4().hex}.{ext}"
+    save_path = os.path.join(SOFTWARE_UPLOAD_FOLDER, stored_name)
+
+    try:
+        file.save(save_path)
+        file_size = os.path.getsize(save_path)
+    except Exception as e:
+        flash(f"Upload failed: {e}", "error")
+        return redirect("/dashboard")
+
+    conn = get_db()
+    conn.execute("""
+        INSERT INTO software_uploads
+        (title, description, file_name, stored_name, file_size_bytes, uploaded_by)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (
+        title,
+        description,
+        safe_original,
+        stored_name,
+        file_size,
+        session.get("user_id"),
+    ))
+    conn.commit()
+    conn.close()
+
+    flash("Software file uploaded successfully.", "success")
     return redirect("/dashboard")
 
 # =========================
@@ -1193,6 +1513,15 @@ def reserve_sitin():
 
     conn = get_db()
     user = conn.execute("SELECT * FROM users WHERE id=?", (session["user_id"],)).fetchone()
+
+    if user["reservation_enabled"] == 0:
+        flash(
+            "Your ability to submit new reservations has been disabled by an administrator. "
+            "Contact the lab office if you need help.",
+            "error",
+        )
+        conn.close()
+        return redirect("/dashboard")
 
     existing_pending = conn.execute("""
         SELECT * FROM reservations WHERE student_id=? AND status='PENDING'
@@ -1360,8 +1689,8 @@ def submit_feedback():
     rating        = request.form.get("rating", "").strip()
     feedback_text = request.form.get("feedback_text", "").strip()
 
-    if not sitin_id or not rating or not feedback_text:
-        flash("Please complete the feedback form.", "warning")
+    if not sitin_id or not rating:
+        flash("Please provide a star rating before submitting.", "warning")
         return redirect("/dashboard")
 
     conn = get_db()

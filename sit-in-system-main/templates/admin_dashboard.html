@@ -96,6 +96,9 @@
         .res-declined  { background:#f8d7da; color:#58151c; padding:3px 10px; border-radius:20px; font-size:.78rem; font-weight:600; border:1px solid #dc3545; }
         .res-cancelled { background:#e2e3e5; color:#41464b; padding:3px 10px; border-radius:20px; font-size:.78rem; font-weight:600; }
 
+        .res-en-badge { background:#d1e7dd; color:#0a3622; padding:3px 10px; border-radius:20px; font-size:.75rem; font-weight:600; border:1px solid #198754; }
+        .res-dis-badge { background:#f8d7da; color:#58151c; padding:3px 10px; border-radius:20px; font-size:.75rem; font-weight:600; border:1px solid #dc3545; }
+
         .notif-dot { display: inline-flex; align-items: center; justify-content: center; background: #dc3545; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: .68rem; font-weight: 700; margin-left: 4px; vertical-align: middle; }
         .action-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 
@@ -157,7 +160,9 @@
                     </a>
                 </li>
                 <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#feedbackReportsModal">💬 Feedback</a></li>
+                <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#softwareUploadModal">🧩 Software / App Upload</a></li>
                 <li><a class="dropdown-item" href="/pc_availability">🖥 PC Availability</a></li>
+                <li><a class="dropdown-item" href="/admin_analytics">📈 Analytics</a></li>
                 <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item text-danger" href="/logout">Logout</a></li>
             </ul>
@@ -543,7 +548,8 @@
                         <thead class="table-dark">
                             <tr>
                                 <th>ID Number</th><th>Name</th><th>Year Level</th>
-                                <th>Course</th><th>Remaining Session</th><th>Actions</th>
+                                <th>Course</th><th>Remaining Session</th>
+                                <th>Can reserve</th><th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -565,8 +571,23 @@
                                 <td>{{ s.course }}</td>
                                 <td>{{ s.remaining_session if s.remaining_session else 30 }}</td>
                                 <td>
+                                    {% if s.reservation_enabled == 0 %}
+                                        <span class="res-dis-badge">Disabled</span>
+                                    {% else %}
+                                        <span class="res-en-badge">Enabled</span>
+                                    {% endif %}
+                                    <form method="POST" action="/admin_toggle_student_reservations/{{ s.student_id }}" class="d-inline ms-1">
+                                        {% if s.reservation_enabled == 0 %}
+                                            <button type="submit" class="btn btn-success btn-sm py-0 px-2" style="font-size:.75rem;">Enable</button>
+                                        {% else %}
+                                            <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-2" style="font-size:.75rem;"
+                                                    onclick="return confirm('Disable new reservations for this student? They can still view history and cancel pending requests.')">Disable</button>
+                                        {% endif %}
+                                    </form>
+                                </td>
+                                <td>
                                     <button class="btn btn-purple btn-sm"
-                                            onclick="openEditModal('{{ s.student_id }}','{{ s.first_name }}','{{ s.last_name }}','{{ s.course }}','{{ s.course_level }}','{{ s.email }}')">
+                                            onclick="openEditModal('{{ s.student_id }}','{{ s.first_name }}','{{ s.last_name }}','{{ s.course }}','{{ s.course_level }}','{{ s.email }}','{{ s.preferred_pc if s.preferred_pc is not none else '' }}')">
                                         Edit
                                     </button>
                                     <form method="POST" action="/delete_student/{{ s.student_id }}" class="d-inline"
@@ -903,6 +924,9 @@
                     <input class="form-control mb-2" name="course" id="editCourse" placeholder="Course" required>
                     <input class="form-control mb-2" name="course_level" id="editCourseLevel" placeholder="Year Level" required>
                     <input class="form-control mb-2" name="email" id="editEmail" placeholder="Email">
+                    <label class="form-label small text-muted mb-1">Preferred PC (optional, 1–50 — smart seat assignment)</label>
+                    <input class="form-control mb-2" name="preferred_pc" id="editPreferredPc" type="number" min="1" max="50"
+                           placeholder="Leave blank to clear">
                     <button class="btn btn-purple w-100">Save Changes</button>
                 </form>
             </div>
@@ -972,6 +996,105 @@
     </div>
 </div>
 
+<!-- SOFTWARE / APP UPLOAD MODAL -->
+<div class="modal fade" id="softwareUploadModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header" style="background-color:#5e3a8c; color:white;">
+                <h5 class="modal-title">🧩 Software / App Import &amp; Upload</h5>
+                <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-3" style="font-size:.9rem;">
+                    Use this to keep installer files, setup packages, and related documents in one place for lab operations.
+                </p>
+
+                <form method="POST" action="/upload_software" enctype="multipart/form-data" class="mb-4">
+                    <div class="row g-2">
+                        <div class="col-md-3">
+                            <label class="form-label">Title</label>
+                            <input type="text" name="title" class="form-control" placeholder="e.g. VS Code Installer" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Description</label>
+                            <input type="text" name="description" class="form-control" placeholder="Optional notes, version, usage">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">File</label>
+                            <input type="file" name="software_file" class="form-control" required>
+                            <small class="text-muted">Allowed: exe, msi, zip, rar, 7z, iso, pdf, txt, doc, docx</small>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button class="btn btn-submit w-100">Upload</button>
+                        </div>
+                    </div>
+                </form>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle" id="softwareUploadsTable">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>File</th>
+                                <th>Size</th>
+                                <th>Uploaded By</th>
+                                <th>Date</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for up in software_uploads %}
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold">{{ up.title }}</div>
+                                    {% if up.description %}
+                                        <div class="small text-muted">{{ up.description }}</div>
+                                    {% endif %}
+                                </td>
+                                <td>{{ up.file_name }}</td>
+                                <td>
+                                    {% if up.file_size_bytes >= 1048576 %}
+                                        {{ '%.2f'|format(up.file_size_bytes / 1048576) }} MB
+                                    {% elif up.file_size_bytes >= 1024 %}
+                                        {{ '%.1f'|format(up.file_size_bytes / 1024) }} KB
+                                    {% else %}
+                                        {{ up.file_size_bytes }} B
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if up.first_name %}
+                                        {{ up.first_name }} {{ up.last_name }}
+                                    {% else %}
+                                        Admin
+                                    {% endif %}
+                                </td>
+                                <td>{{ up.created_at }}</td>
+                                <td>
+                                    <a class="btn btn-sm btn-outline-primary"
+                                       href="{{ url_for('static', filename='uploads/software/' + up.stored_name) }}"
+                                       download="{{ up.file_name }}">
+                                        Download
+                                    </a>
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td class="text-center text-muted py-4">No uploaded software or app files yet.</td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- SCRIPTS -->
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
@@ -1026,6 +1149,11 @@ $('#reservationsModal').on('shown.bs.modal', function () {
             resTable = $('#reservationsTable').DataTable({ pageLength: 15, order: [[8,'desc']] });
         }
     } catch(e) { console.warn('reservationsTable DataTable:', e); }
+});
+$('#softwareUploadModal').on('shown.bs.modal', function () {
+    if (!$.fn.DataTable.isDataTable('#softwareUploadsTable')) {
+        $('#softwareUploadsTable').DataTable({ pageLength: 10, order: [[4,'desc']] });
+    }
 });
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -1176,13 +1304,15 @@ document.getElementById('sitInIdNumber').addEventListener('blur', function () {
 });
 
 // ── Pre-fill Edit Student modal ──
-function openEditModal(id, firstName, lastName, course, courseLevel, email) {
+function openEditModal(id, firstName, lastName, course, courseLevel, email, preferredPc) {
     document.getElementById('editStudentId').value    = id;
     document.getElementById('editFirstName').value    = firstName;
     document.getElementById('editLastName').value     = lastName;
     document.getElementById('editCourse').value       = course;
     document.getElementById('editCourseLevel').value  = courseLevel;
     document.getElementById('editEmail').value        = email;
+    const pp = document.getElementById('editPreferredPc');
+    if (pp) pp.value = (preferredPc !== undefined && preferredPc !== null && String(preferredPc) !== '') ? preferredPc : '';
     new bootstrap.Modal(document.getElementById('editStudentModal')).show();
 }
 
